@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nursing-eval-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["nursing-eval-web/server.py"],
+      "port": 5050
+    }
+  ]
+}

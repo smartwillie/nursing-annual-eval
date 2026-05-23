@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nursing Annual Evaluation Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1e3a5f;
+      --blue:   #2d6a9f;
+      --light:  #e8f2fb;
+      --green:  #28a745;
+      --yellow: #ffc107;
+      --red:    #dc3545;
+      --gray:   #6c757d;
+      --border: #d0dae8;
+      --card-bg:#ffffff;
+      --body-bg:#f0f4f9;
+      --text:   #1a1a2e;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--body-bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    header .logo { font-size: 2rem; }
+    header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: .3px; }
+    header p  { font-size: .85rem; opacity: .8; margin-top: .15rem; }
+
+    /* ── Layout ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* ── Mode toggle ── */
+    .mode-bar {
+      display: flex;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1.8rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    }
+    .mode-btn {
+      flex: 1;
+      padding: .85rem;
+      border: none;
+      background: transparent;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--gray);
+      transition: all .2s;
+    }
+    .mode-btn.active {
+      background: var(--navy);
+      color: #fff;
+    }
+    .mode-btn:hover:not(.active) { background: var(--light); }
+
+    /* ── Employee card ── */
+    .employee-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--blue);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      position: relative;
+      animation: slideIn .2s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .remove-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--gray);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .remove-btn:hover { background: #fee; border-color: var(--red); color: var(--red); }
+
+    /* ── Form grid ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 2.5fr 1fr 2fr 1fr;
+      gap: .9rem;
+      margin-bottom: .9rem;
+    }
+    @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--gray); margin-bottom: .35rem; letter-spacing: .4px; text-transform: uppercase; }
+
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: .55rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: .92rem;
+      color: var(--text);
+      background: #fafcff;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(45,106,159,.15);
+    }
+    textarea { resize: vertical; min-height: 130px; line-height: 1.55; }
+
+    textarea::placeholder { color: #aab; font-size: .87rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .65rem 1.3rem;
+      border: none;
+      border-radius: 8px;
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--blue); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,58,95,.3); }
+    .btn-secondary { background: var(--card-bg); color: var(--navy); border: 1.5px solid var(--navy); }
+    .btn-secondary:hover { background: var(--light); }
+    .btn-ghost { background: transparent; color: var(--gray); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--light); color: var(--navy); border-color: var(--blue); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+
+    .action-row {
+      display: flex;
+      gap: .8rem;
+      align-items: center;
+      margin-top: 1.4rem;
+      flex-wrap: wrap;
+    }
+
+    .add-btn-row { margin-bottom: 1.4rem; }
+
+    /* ── Progress / spinner ── */
+    .progress-wrap { margin: 1.2rem 0; display: none; }
+    .progress-wrap.visible { display: block; }
+    .progress-bar-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill  { height: 100%; background: linear-gradient(90deg, var(--navy), var(--blue)); border-radius: 99px; transition: width .4s ease; }
+    .progress-label { font-size: .82rem; color: var(--gray); margin-top: .4rem; }
+
+    /* ── Results ── */
+    #results { margin-top: 2rem; }
+    .results-header {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .result-card {
+      background: var(--card-bg);
+      border: 1px solid #cce0f5;
+      border-left: 5px solid var(--green);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1.4rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      animation: slideIn .25s ease;
+    }
+    .result-card.error-card { border-left-color: var(--red); }
+
+    .result-meta {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      flex-wrap: wrap;
+      margin-bottom: .9rem;
+    }
+    .result-name { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+    .badge {
+      padding: .22rem .75rem;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+    .badge-exceeds { background:#d4edda; color:#155724; }
+    .badge-meets   { background:#cce5ff; color:#004085; }
+    .badge-needs   { background:#fff3cd; color:#856404; }
+    .badge-role    { background:#e9ecef; color:#495057; }
+
+    .eval-text {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: .97rem;
+      line-height: 1.78;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: .6rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Download all ── */
+    .download-all-row {
+      margin-top: 1.2rem;
+      padding-top: 1.2rem;
+      border-top: 2px dashed var(--border);
+      display: none;
+    }
+    .download-all-row.visible { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem; right: 1.5rem;
+      background: var(--navy);
+      color: #fff;
+      padding: .75rem 1.2rem;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,.2);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all .25s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: none; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 2px dashed var(--border); margin: 1.8rem 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏥</div>
+  <div>
+    <h1>Annual Performance Evaluation Generator</h1>
+    <p>Inpatient Nursing Unit &nbsp;·&nbsp; RN / LPN / CNA / NA &nbsp;·&nbsp; Aligned to Organizational Values</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Mode toggle -->
+  <div class="mode-bar">
+    <button class="mode-btn active" id="btn-individual" onclick="setMode('individual')">
+      👤 Individual Evaluation
+    </button>
+    <button class="mode-btn" id="btn-batch" onclick="setMode('batch')">
+      👥 Batch (Multiple Employees)
+    </button>
+  </div>
+
+  <!-- Employee cards -->
+  <div id="cards-container"></div>
+
+  <!-- Add employee (batch only) -->
+  <div class="add-btn-row" id="add-btn-row" style="display:none;">
+    <button class="btn btn-ghost" onclick="addCard()">＋ Add Employee</button>
+  </div>
+
+  <!-- Action row -->
+  <hr class="divider">
+  <div class="action-row">
+    <button class="btn btn-primary" id="generate-btn" onclick="generate()">
+      ⚡ Generate Evaluation
+    </button>
+    <button class="btn btn-ghost" onclick="clearResults()">🗑 Clear Results</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="progress-label">Generating…</div>
+  </div>
+
+  <!-- Results -->
+  <div id="results"></div>
+
+  <!-- Download all -->
+  <div class="download-all-row" id="download-all-row">
+    <button class="btn btn-secondary" onclick="downloadAll()">⬇ Download All Evaluations (.txt)</button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let mode = 'individual';
+  let cardCount = 0;
+  let cards = [];        // array of card ids in order
+  let resultsData = [];  // array of result objects
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  addCard();
+
+  // ── Mode ───────────────────────────────────────────────────────────────────
+  function setMode(m) {
+    mode = m;
+    document.getElementById('btn-individual').classList.toggle('active', m === 'individual');
+    document.getElementById('btn-batch').classList.toggle('active', m === 'batch');
+    document.getElementById('add-btn-row').style.display = m === 'batch' ? 'block' : 'none';
+    document.getElementById('generate-btn').textContent =
+      m === 'batch' ? '⚡ Generate All Evaluations' : '⚡ Generate Evaluation';
+
+    // In individual mode keep only first card, hide remove buttons
+    if (m === 'individual') {
+      while (cards.length > 1) removeCard(cards[cards.length - 1]);
+      const rb = document.querySelector('.remove-btn');
+      if (rb) rb.style.display = 'none';
+    } else {
+      document.querySelectorAll('.remove-btn').forEach(b => b.style.display = 'flex');
+    }
+  }
+
+  // ── Cards ──────────────────────────────────────────────────────────────────
+  function addCard() {
+    const id = ++cardCount;
+    cards.push(id);
+    const wrap = document.getElementById('cards-container');
+    const div = document.createElement('div');
+    div.className = 'employee-card';
+    div.id = `card-${id}`;
+    div.innerHTML = cardHTML(id);
+    wrap.appendChild(div);
+    updateCardTitles();
+    if (mode === 'individual') {
+      div.querySelector('.remove-btn').style.display = 'none';
+    }
+  }
+
+  function removeCard(id) {
+    const el = document.getElementById(`card-${id}`);
+    if (el) el.remove();
+    cards = cards.filter(c => c !== id);
+    updateCardTitles();
+  }
+
+  function updateCardTitles() {
+    cards.forEach((id, i) => {
+      const t = document.getElementById(`card-title-${id}`);
+      if (t) t.textContent = `👤 Employee ${i + 1}`;
+    });
+  }
+
+  function cardHTML(id) {
+    return `
+      <div class="card-header">
+        <div class="card-title" id="card-title-${id}">👤 Employee ${cards.length}</div>
+        <button class="remove-btn" onclick="removeCard(${id})" title="Remove">✕</button>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label>Employee Name</label>
+          <input type="text" id="name-${id}" placeholder="e.g. Jane Smith" />
+        </div>
+        <div>
+          <label>Role</label>
+          <select id="role-${id}">
+            <option>RN</option>
+            <option>LPN</option>
+            <option>CNA</option>
+            <option>NA</option>
+          </select>
+        </div>
+        <div>
+          <label>Performance Level</label>
+          <select id="level-${id}">
+            <option>Exceeds Expectations</option>
+            <option selected>Meets Expectations</option>
+            <option>Needs Improvement</option>
+          </select>
+        </div>
+        <div>
+          <label>Paragraphs</label>
+          <select id="paras-${id}">
+            <option value="1">1 — Brief</option>
+            <option value="2" selected>2 — Standard</option>
+            <option value="3">3 — Detailed</option>
+            <option value="4">4 — Comprehensive</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label>Manager's Notes / Staff Description</label>
+        <textarea id="notes-${id}" placeholder="Describe this employee's performance in detail. Include:
+• Clinical skills and patient care observations
+• Specific incidents or examples
+• Teamwork, communication, and leadership behaviors
+• Attendance: tardiness, absences, no-call/no-shows
+• Professional development: certifications, courses completed
+• Any standout strengths or areas needing improvement"></textarea>
+      </div>`;
+  }
+
+  // ── Generate ───────────────────────────────────────────────────────────────
+  async function generate() {
+    const employees = [];
+    let hasError = false;
+
+    for (const id of cards) {
+      const name  = document.getElementById(`name-${id}`).value.trim();
+      const role  = document.getElementById(`role-${id}`).value;
+      const level = document.getElementById(`level-${id}`).value;
+      const paras = document.getElementById(`paras-${id}`).value;
+      const notes = document.getElementById(`notes-${id}`).value.trim();
+
+      if (!name || !notes) {
+        highlight(`name-${id}`, !name);
+        highlight(`notes-${id}`, !notes);
+        hasError = true;
+        continue;
+      }
+      employees.push({ name, role, level, paragraphs: paras, notes });
+    }
+
+    if (hasError) { showToast('Please fill in all required fields.', true); return; }
+    if (!employees.length) { showToast('No employees to generate.', true); return; }
+
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    showProgress(0, `Sending ${employees.length} request(s)…`);
+
+    try {
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employees }),
+      });
+      showProgress(60, 'Receiving results…');
+      const data = await res.json();
+      showProgress(100, 'Done!');
+      setTimeout(() => hideProgress(), 600);
+
+      resultsData = data;
+      renderResults(data);
+    } catch (e) {
+      hideProgress();
+      showToast('Network error: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function highlight(id, condition) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (condition) {
+      el.style.borderColor = 'var(--red)';
+      el.addEventListener('input', () => el.style.borderColor = '', { once: true });
+    }
+  }
+
+  // ── Render results ─────────────────────────────────────────────────────────
+  function renderResults(data) {
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+
+    if (!data.length) return;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'results-header';
+    hdr.innerHTML = `📄 Generated Evaluations <span style="font-size:.85rem;color:var(--gray);font-weight:400">(${data.length})</span>`;
+    container.appendChild(hdr);
+
+    data.forEach((r, i) => {
+      const card = document.createElement('div');
+      card.className = 'result-card' + (r.error ? ' error-card' : '');
+      card.id = `result-${i}`;
+
+      if (r.error) {
+        card.innerHTML = `
+          <div class="result-meta">
+            <span class="result-name">${esc(r.name)}</span>
+          </div>
+          <p style="color:var(--red)">⚠ ${esc(r.error)}</p>`;
+      } else {
+        const badgeClass = {
+          'Exceeds Expectations': 'badge-exceeds',
+          'Meets Expectations':   'badge-meets',
+          'Needs Improvement':    'badge-needs',
+        }[r.level] || 'badge-meets';
+
+        const formatted = r.text.split(/\n\n+/).map(p => p.trim()).filter(Boolean).join('\n\n');
+
+        card.innerHTML = `
+          <div class="result-meta">
+            <span class="result-name">${esc(r.name)}</span>
+            <span class="badge badge-role">${esc(r.role)}</span>
+            <span class="badge ${badgeClass}">${esc(r.level)}</span>
+            <span class="badge" style="background:#f0f0f0;color:#555">${r.paragraphs} ¶</span>
+          </div>
+          <div class="eval-text" id="eval-text-${i}">${esc(formatted)}</div>
+          <div class="result-actions">
+            <button class="btn btn-ghost" onclick="copyEval(${i})">📋 Copy</button>
+            <button class="btn btn-ghost" onclick="downloadEval(${i})">⬇ Download (.txt)</button>
+          </div>`;
+      }
+      container.appendChild(card);
+    });
+
+    // Show download-all if >1 success
+    const successes = data.filter(r => !r.error);
+    const dlAll = document.getElementById('download-all-row');
+    dlAll.classList.toggle('visible', successes.length > 1);
+
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  function clearResults() {
+    resultsData = [];
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('download-all-row').classList.remove('visible');
+  }
+
+  function copyEval(i) {
+    const r = resultsData[i];
+    if (!r || r.error) return;
+    const text = `${r.name} — ${r.role} — ${r.level}\n\n${r.text}`;
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
+  }
+
+  function downloadEval(i) {
+    const r = resultsData[i];
+    if (!r || r.error) return;
+    const text = `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`;
+    triggerDownload(text, `eval_${r.name.replace(/\s+/g, '_')}.txt`);
+  }
+
+  function downloadAll() {
+    const parts = resultsData
+      .filter(r => !r.error)
+      .map(r => `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
+      .join('\n\n' + '─'.repeat(60) + '\n\n');
+    triggerDownload(parts, 'all_evaluations.txt');
+  }
+
+  function triggerDownload(text, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Progress ───────────────────────────────────────────────────────────────
+  function showProgress(pct, label) {
+    document.getElementById('progress-wrap').classList.add('visible');
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = label;
+  }
+  function hideProgress() {
+    document.getElementById('progress-wrap').classList.remove('visible');
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? 'var(--red)' : 'var(--navy)';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── Escape HTML ────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
