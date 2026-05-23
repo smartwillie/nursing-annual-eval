@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["nursing-eval-web/server.py"],
       "port": 5050
+    },
+    {
+      "name": "nursing-eval-standalone",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5051"],
+      "port": 5051
     }
   ]
 }
