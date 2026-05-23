@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nursing Annual Evaluation Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:   #1e3a5f;
+      --blue:   #2d6a9f;
+      --light:  #e8f2fb;
+      --green:  #28a745;
+      --red:    #dc3545;
+      --yellow: #ffc107;
+      --gray:   #6c757d;
+      --border: #d0dae8;
+      --bg:     #f0f4f9;
+      --card:   #ffffff;
+      --text:   #1a1a2e;
+      --radius: 10px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── API Key modal ── */
+    #key-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    #key-modal.hidden { display: none; }
+    .modal-box {
+      background: var(--card); border-radius: 14px; padding: 2.2rem 2.4rem;
+      width: 460px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .modal-box h2 { color: var(--navy); font-size: 1.2rem; margin-bottom: .4rem; }
+    .modal-box p  { font-size: .88rem; color: var(--gray); margin-bottom: 1.2rem; line-height: 1.55; }
+    .modal-box input {
+      width: 100%; padding: .65rem .85rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: .95rem; font-family: monospace;
+      margin-bottom: .8rem; letter-spacing: .5px;
+    }
+    .modal-box input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,106,159,.15); }
+    .modal-hint { font-size: .78rem; color: var(--gray); margin-top: .5rem; }
+    .modal-hint a { color: var(--blue); }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      color: #fff; padding: 1.4rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .logo { font-size: 2rem; }
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+    header p  { font-size: .82rem; opacity: .8; margin-top: .15rem; }
+    .key-chip {
+      margin-left: auto; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px; padding: .35rem .9rem; font-size: .8rem; cursor: pointer;
+      white-space: nowrap; transition: background .15s;
+    }
+    .key-chip:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Main ── */
+    .container { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+    /* ── Mode bar ── */
+    .mode-bar {
+      display: flex; background: var(--card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 1.8rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    }
+    .mode-btn {
+      flex: 1; padding: .85rem; border: none; background: transparent;
+      font-size: .95rem; font-weight: 600; cursor: pointer; color: var(--gray); transition: all .2s;
+    }
+    .mode-btn.active { background: var(--navy); color: #fff; }
+    .mode-btn:hover:not(.active) { background: var(--light); }
+
+    /* ── Employee card ── */
+    .emp-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 5px solid var(--blue); border-radius: var(--radius);
+      padding: 1.4rem 1.6rem; margin-bottom: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+    .card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--navy); }
+    .remove-btn {
+      background: none; border: 1px solid var(--border); border-radius: 50%;
+      width: 28px; height: 28px; cursor: pointer; font-size: 1rem; color: var(--gray);
+      display: flex; align-items: center; justify-content: center; transition: all .15s;
+    }
+    .remove-btn:hover { background: #fee; border-color: var(--red); color: var(--red); }
+
+    /* ── Form grid ── */
+    .fgrid { display: grid; grid-template-columns: 2.5fr 1fr 2fr 1fr; gap: .9rem; margin-bottom: .9rem; }
+    @media(max-width:680px) { .fgrid { grid-template-columns: 1fr 1fr; } }
+    label { display: block; font-size: .77rem; font-weight: 600; color: var(--gray); margin-bottom: .3rem; letter-spacing: .4px; text-transform: uppercase; }
+    input[type="text"], select, textarea {
+      width: 100%; padding: .55rem .75rem; border: 1.5px solid var(--border);
+      border-radius: 7px; font-size: .92rem; color: var(--text); background: #fafcff;
+      transition: border-color .15s, box-shadow .15s; font-family: inherit;
+    }
+    input[type="text"]:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,106,159,.15);
+    }
+    textarea { resize: vertical; min-height: 128px; line-height: 1.55; }
+    textarea::placeholder { color: #aab; font-size: .87rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .65rem 1.3rem; border: none; border-radius: 8px;
+      font-size: .92rem; font-weight: 600; cursor: pointer; transition: all .18s;
+    }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--blue); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30,58,95,.3); }
+    .btn-ghost { background: var(--card); color: var(--gray); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--light); color: var(--navy); border-color: var(--blue); }
+    .btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--navy); }
+    .btn-outline:hover { background: var(--light); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+    .action-row { display: flex; gap: .8rem; align-items: center; margin-top: 1.4rem; flex-wrap: wrap; }
+    .divider { border: none; border-top: 2px dashed var(--border); margin: 1.6rem 0; }
+
+    /* ── Progress ── */
+    .prog-wrap { margin: 1.2rem 0; display: none; }
+    .prog-wrap.on { display: block; }
+    .prog-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .prog-fill  { height: 100%; background: linear-gradient(90deg, var(--navy), var(--blue)); border-radius: 99px; width: 0%; transition: width .4s ease; }
+    .prog-lbl   { font-size: .82rem; color: var(--gray); margin-top: .45rem; }
+
+    /* ── Results ── */
+    .results-hdr { font-size: 1.2rem; font-weight: 700; color: var(--navy); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .result-card {
+      background: var(--card); border: 1px solid #cce0f5;
+      border-left: 5px solid var(--green); border-radius: var(--radius);
+      padding: 1.4rem 1.6rem; margin-bottom: 1.4rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05); animation: fadeIn .25s ease;
+    }
+    .result-card.err { border-left-color: var(--red); }
+    .result-meta { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .9rem; }
+    .rname { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+    .badge { padding: .22rem .75rem; border-radius: 20px; font-size: .78rem; font-weight: 700; }
+    .b-ex  { background:#d4edda; color:#155724; }
+    .b-me  { background:#cce5ff; color:#004085; }
+    .b-ni  { background:#fff3cd; color:#856404; }
+    .b-rl  { background:#e9ecef; color:#495057; }
+    .eval-text { font-family: Georgia, serif; font-size: .97rem; line-height: 1.78; white-space: pre-wrap; color: var(--text); }
+    .res-actions { display: flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap; }
+    .dl-all-row { margin-top: 1.2rem; padding-top: 1.2rem; border-top: 2px dashed var(--border); display: none; }
+    .dl-all-row.on { display: flex; gap: .8rem; flex-wrap: wrap; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--navy); color: #fff; padding: .75rem 1.2rem;
+      border-radius: 8px; font-size: .88rem; font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,.2); opacity: 0;
+      transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── API Key Modal ───────────────────────────────────────────────────────── -->
+<div id="key-modal">
+  <div class="modal-box">
+    <h2>🔑 Enter your Anthropic API Key</h2>
+    <p>Your key is saved only in this browser and never sent anywhere except directly to Anthropic to generate evaluations.</p>
+    <input type="password" id="key-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <button class="btn btn-primary" style="width:100%" onclick="saveKey()">Save & Continue</button>
+    <p class="modal-hint">Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</p>
+  </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">🏥</div>
+  <div>
+    <h1>Annual Performance Evaluation Generator</h1>
+    <p>Inpatient Nursing Unit &nbsp;·&nbsp; RN / LPN / CNA / NA &nbsp;·&nbsp; Aligned to Organizational Values</p>
+  </div>
+  <div class="key-chip" onclick="changeKey()" title="Change API key">🔑 API Key ✓</div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<div class="container">
+
+  <div class="mode-bar">
+    <button class="mode-btn active" id="btn-ind" onclick="setMode('individual')">👤 Individual Evaluation</button>
+    <button class="mode-btn"        id="btn-bat" onclick="setMode('batch')">👥 Batch (Multiple Employees)</button>
+  </div>
+
+  <div id="cards"></div>
+
+  <div id="add-row" style="display:none; margin-bottom:1.4rem;">
+    <button class="btn btn-ghost" onclick="addCard()">＋ Add Employee</button>
+  </div>
+
+  <hr class="divider">
+  <div class="action-row">
+    <button class="btn btn-primary" id="gen-btn" onclick="generate()">⚡ Generate Evaluation</button>
+    <button class="btn btn-ghost"   onclick="clearResults()">🗑 Clear Results</button>
+  </div>
+
+  <div class="prog-wrap" id="prog">
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="prog-lbl"  id="prog-lbl">Generating…</div>
+  </div>
+
+  <div id="results"></div>
+  <div class="dl-all-row" id="dl-all">
+    <button class="btn btn-outline" onclick="downloadAll()">⬇ Download All Evaluations (.txt)</button>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const SYSTEM = `You are a professional healthcare HR specialist generating annual performance evaluations for inpatient nursing unit staff. Your evaluations are professional, warm, specific, and evidence-based — every sentence reflects the actual rating and manager's notes provided.
+
+ORGANIZATIONAL VALUES (weave 1–3 most relevant into the values paragraph):
+- Compassion: Listens with empathy; accompanies and comforts those in need of healing.
+- Inclusion: Celebrates each person's gifts and voice; respects the dignity of all.
+- Integrity: Inspires trust through honesty; demonstrates courage in the face of inequity.
+- Excellence: Serves with passion, creativity, and stewardship; exceeds expectations.
+- Collaboration: Commits to the power of working together; builds and nurtures meaningful relationships.
+
+TONE BY PERFORMANCE LEVEL:
+- Exceeds Expectations: Highlight standout contributions, leadership moments, initiative, and exemplary conduct.
+- Meets Expectations: Affirm consistency, reliability, and competency. Identify one development area.
+- Needs Improvement: Be honest but constructive. Name specific gaps without harsh language. Provide a clear, supportive pathway forward.
+
+RN/LPN COMPETENCY AREAS:
+1. Patient Assessment & Care Planning — thorough, individualized, proactive
+2. Clinical Skills & Competence — medications, procedures, wound care, equipment
+3. Critical Thinking & Problem Solving — recognizes changes, anticipates complications, responds to emergencies
+4. Documentation — timely, accurate, reflective of condition and interventions
+5. Communication — with patients, families, physicians, team; clear, empathetic, professional
+6. Leadership & Teamwork — mentors junior staff, charge duties, positive team dynamics
+7. Safety & Quality — infection control, safety protocols, quality improvement
+8. Professional Development — continuing education, certifications, professional organizations
+9. Attendance — punctuality, clock-in compliance, unscheduled absences (≤5 threshold), no call/no shows
+
+CNA/NA COMPETENCY AREAS:
+1. Basic Patient Care (ADLs) — bathing, feeding, ambulation, toileting
+2. Monitoring & Reporting — vital signs, I&O, promptly reports changes to nursing staff
+3. Communication — respectful, clear interactions with patients, families, and nurses
+4. Teamwork & Collaboration — works effectively with nurses and healthcare team
+5. Safety & Environment — safe/clean environment, fall precautions, proper body mechanics
+6. Initiative & Responsiveness — anticipates patient needs, responds promptly to call lights
+7. Professional Development — continuing education, certifications, professional organizations
+8. Attendance — punctuality, clock-in compliance, unscheduled absences (≤5 threshold), no call/no shows
+
+PARAGRAPH STRUCTURE RULES:
+- 1 paragraph: A single comprehensive paragraph (~150–180 words) covering clinical performance, key observed behaviors, relevant org values, and a forward-looking close.
+- 2 paragraphs: Para 1 = Clinical/care competencies and observable behaviors (4–6 sentences). Para 2 = Org values alignment + forward-looking statement (4–5 sentences).
+- 3 paragraphs: Para 1 = Core clinical competencies (4–5 sentences). Para 2 = Notable behaviors, teamwork, specific examples, and any attendance/development highlights (3–4 sentences). Para 3 = Org values alignment + forward-looking statement (3–4 sentences).
+- 4 paragraphs: Para 1 = Core clinical competencies overview (3–4 sentences). Para 2 = Standout behaviors, initiative, and specific examples (3–4 sentences). Para 3 = Growth areas, development, attendance, or continued expectations (3–4 sentences). Para 4 = Org values alignment + forward-looking goals (3–4 sentences).
+
+STRICT RULES:
+- Never use vague filler phrases like "is a valued team member" or "goes above and beyond" without specific context.
+- Use the employee's name naturally throughout (not every sentence).
+- Extract specific behaviors and patterns from the manager's notes — do not invent details not mentioned.
+- Do not number the paragraphs or add headers. Output plain paragraphs only.`;
+
+// ── API Key ────────────────────────────────────────────────────────────────
+function saveKey() {
+  const k = document.getElementById('key-input').value.trim();
+  if (!k.startsWith('sk-')) { showToast('Please enter a valid API key (starts with sk-)', true); return; }
+  localStorage.setItem('anthropic_key', k);
+  document.getElementById('key-modal').classList.add('hidden');
+}
+function changeKey() {
+  localStorage.removeItem('anthropic_key');
+  document.getElementById('key-input').value = '';
+  document.getElementById('key-modal').classList.remove('hidden');
+}
+function getKey() { return localStorage.getItem('anthropic_key') || ''; }
+
+// Show modal if no key saved
+window.addEventListener('DOMContentLoaded', () => {
+  if (!getKey()) document.getElementById('key-modal').classList.remove('hidden');
+  else document.getElementById('key-modal').classList.add('hidden');
+  addCard();
+});
+document.getElementById('key-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveKey(); });
+
+// ── Mode ───────────────────────────────────────────────────────────────────
+let mode = 'individual';
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-ind').classList.toggle('active', m === 'individual');
+  document.getElementById('btn-bat').classList.toggle('active', m === 'batch');
+  document.getElementById('add-row').style.display = m === 'batch' ? 'block' : 'none';
+  document.getElementById('gen-btn').textContent = m === 'batch' ? '⚡ Generate All Evaluations' : '⚡ Generate Evaluation';
+  if (m === 'individual') {
+    while (cards.length > 1) removeCard(cards[cards.length - 1]);
+    const rb = document.querySelector('.remove-btn');
+    if (rb) rb.style.display = 'none';
+  } else {
+    document.querySelectorAll('.remove-btn').forEach(b => b.style.display = 'flex');
+  }
+}
+
+// ── Cards ──────────────────────────────────────────────────────────────────
+let cardId = 0, cards = [], resultsData = [];
+
+function addCard() {
+  const id = ++cardId;
+  cards.push(id);
+  const div = document.createElement('div');
+  div.className = 'emp-card';
+  div.id = `card-${id}`;
+  div.innerHTML = `
+    <div class="card-hdr">
+      <div class="card-title" id="ctitle-${id}"></div>
+      <button class="remove-btn" onclick="removeCard(${id})" title="Remove">✕</button>
+    </div>
+    <div class="fgrid">
+      <div>
+        <label>Employee Name</label>
+        <input type="text" id="name-${id}" placeholder="e.g. Jane Smith"/>
+      </div>
+      <div>
+        <label>Role</label>
+        <select id="role-${id}">
+          <option>RN</option><option>LPN</option><option>CNA</option><option>NA</option>
+        </select>
+      </div>
+      <div>
+        <label>Performance Level</label>
+        <select id="level-${id}">
+          <option>Exceeds Expectations</option>
+          <option selected>Meets Expectations</option>
+          <option>Needs Improvement</option>
+        </select>
+      </div>
+      <div>
+        <label>Paragraphs</label>
+        <select id="paras-${id}">
+          <option value="1">1 — Brief</option>
+          <option value="2" selected>2 — Standard</option>
+          <option value="3">3 — Detailed</option>
+          <option value="4">4 — Comprehensive</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label>Manager's Notes / Staff Description</label>
+      <textarea id="notes-${id}" placeholder="Describe this employee's performance in detail. Include:&#10;• Clinical skills and patient care observations&#10;• Specific incidents or examples&#10;• Teamwork, communication, and leadership behaviors&#10;• Attendance: tardiness, absences, no-call/no-shows&#10;• Professional development: certifications, courses completed&#10;• Any standout strengths or areas needing improvement"></textarea>
+    </div>`;
+  document.getElementById('cards').appendChild(div);
+  updateTitles();
+  if (mode === 'individual') div.querySelector('.remove-btn').style.display = 'none';
+}
+
+function removeCard(id) {
+  document.getElementById(`card-${id}`)?.remove();
+  cards = cards.filter(c => c !== id);
+  updateTitles();
+}
+
+function updateTitles() {
+  cards.forEach((id, i) => {
+    const el = document.getElementById(`ctitle-${id}`);
+    if (el) el.textContent = `👤 Employee ${i + 1}`;
+  });
+}
+
+// ── Generate ───────────────────────────────────────────────────────────────
+async function generate() {
+  if (!getKey()) { changeKey(); return; }
+  const employees = [];
+  let hasErr = false;
+  for (const id of cards) {
+    const name  = document.getElementById(`name-${id}`).value.trim();
+    const notes = document.getElementById(`notes-${id}`).value.trim();
+    if (!name || !notes) {
+      if (!name)  flag(`name-${id}`);
+      if (!notes) flag(`notes-${id}`);
+      hasErr = true; continue;
+    }
+    employees.push({
+      id,
+      name,
+      role:  document.getElementById(`role-${id}`).value,
+      level: document.getElementById(`level-${id}`).value,
+      paras: +document.getElementById(`paras-${id}`).value,
+      notes,
+    });
+  }
+  if (hasErr) { showToast('Please fill in all required fields.', true); return; }
+  if (!employees.length) { showToast('No employees to generate.', true); return; }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  resultsData = [];
+  setProgress(5, `Sending ${employees.length} request(s)…`);
+
+  const results = [];
+  for (let i = 0; i < employees.length; i++) {
+    const e = employees[i];
+    setProgress(10 + Math.round((i / employees.length) * 80), `Generating ${i + 1} of ${employees.length}: ${e.name}…`);
+    try {
+      const text = await callAPI(e.name, e.role, e.level, e.notes, e.paras);
+      results.push({ name: e.name, role: e.role, level: e.level, paragraphs: e.paras, text });
+    } catch (err) {
+      results.push({ name: e.name, error: err.message });
+    }
+  }
+
+  setProgress(100, 'Done!');
+  setTimeout(hideProgress, 600);
+  btn.disabled = false;
+  resultsData = results;
+  renderResults(results);
+}
+
+async function callAPI(name, role, level, notes, paras) {
+  const userMsg = `Generate a ${paras}-paragraph annual performance evaluation using the framework above.
+
+Employee Name: ${name}
+Role: ${role}
+Performance Level: ${level}
+Number of Paragraphs: ${paras}
+
+Manager's Notes / Observations:
+${notes}
+
+Output exactly ${paras} paragraph(s) separated by a blank line. No headers, no numbering, no bullet points — plain prose only.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': getKey(),
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-ipc': 'true',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content[0].text.trim();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderResults(data) {
+  const el = document.getElementById('results');
+  el.innerHTML = '';
+  if (!data.length) return;
+
+  const hdr = document.createElement('div');
+  hdr.className = 'results-hdr';
+  hdr.innerHTML = `📄 Generated Evaluations <span style="font-size:.85rem;color:var(--gray);font-weight:400">(${data.length})</span>`;
+  el.appendChild(hdr);
+
+  data.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'result-card' + (r.error ? ' err' : '');
+    if (r.error) {
+      card.innerHTML = `<div class="result-meta"><span class="rname">${esc(r.name)}</span></div><p style="color:var(--red)">⚠ ${esc(r.error)}</p>`;
+    } else {
+      const bc = { 'Exceeds Expectations':'b-ex','Meets Expectations':'b-me','Needs Improvement':'b-ni' }[r.level] || 'b-me';
+      const txt = r.text.split(/\n\n+/).map(p => p.trim()).filter(Boolean).join('\n\n');
+      card.innerHTML = `
+        <div class="result-meta">
+          <span class="rname">${esc(r.name)}</span>
+          <span class="badge b-rl">${esc(r.role)}</span>
+          <span class="badge ${bc}">${esc(r.level)}</span>
+          <span class="badge" style="background:#f0f0f0;color:#555">${r.paragraphs} ¶</span>
+        </div>
+        <div class="eval-text" id="et-${i}">${esc(txt)}</div>
+        <div class="res-actions">
+          <button class="btn btn-ghost" onclick="copyEval(${i})">📋 Copy</button>
+          <button class="btn btn-ghost" onclick="dlEval(${i})">⬇ Download (.txt)</button>
+        </div>`;
+    }
+    el.appendChild(card);
+  });
+
+  const ok = data.filter(r => !r.error);
+  document.getElementById('dl-all').classList.toggle('on', ok.length > 1);
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearResults() {
+  resultsData = [];
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('dl-all').classList.remove('on');
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function copyEval(i) {
+  const r = resultsData[i];
+  if (!r || r.error) return;
+  navigator.clipboard.writeText(`${r.name} — ${r.role} — ${r.level}\n\n${r.text}`)
+    .then(() => showToast('Copied to clipboard!'));
+}
+function dlEval(i) {
+  const r = resultsData[i];
+  if (!r || r.error) return;
+  dl(`${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`,
+     `eval_${r.name.replace(/\s+/g,'_')}.txt`);
+}
+function downloadAll() {
+  const txt = resultsData.filter(r => !r.error)
+    .map(r => `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
+    .join('\n\n' + '─'.repeat(60) + '\n\n');
+  dl(txt, 'all_evaluations.txt');
+}
+function dl(text, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── Progress ───────────────────────────────────────────────────────────────
+function setProgress(pct, lbl) {
+  document.getElementById('prog').classList.add('on');
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-lbl').textContent = lbl;
+}
+function hideProgress() { document.getElementById('prog').classList.remove('on'); }
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let tt;
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? 'var(--red)' : 'var(--navy)';
+  t.classList.add('show');
+  clearTimeout(tt);
+  tt = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function flag(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.borderColor = 'var(--red)';
+  el.addEventListener('input', () => el.style.borderColor = '', { once: true });
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
