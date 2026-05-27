@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareFlow — MED/TELE Charge Nurse</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* ═══════════════════════════════════════════════════════════
+     CSS VARIABLES — Night mode (default)
+  ═══════════════════════════════════════════════════════════ */
+  :root {
+    --bg-base:        #080f1d;
+    --bg-panel:       #0a1628;
+    --bg-card:        #1e293b;
+    --border:         #1e293b;
+    --border-sub:     #334155;
+    --text-1:         #f1f5f9;
+    --text-2:         #cbd5e1;
+    --text-3:         #94a3b8;
+    --text-4:         #64748b;
+    --text-5:         #334155;
+    --input-bg:       #0f172a;
+    --cap-bg:         #0f172a;
+    --legend-bg:      #1e293b;
+    --corridor-path:  #1e3a5f;
+    --station-bg:     rgba(15,23,42,0.92);
+    --station-border: #1e3a5f;
+    --station-label:  #1d4ed8;
+    --room-vacant-bg: #2d3f55;
+    --room-vacant-br: #3d5068;
+    --room-vacant-tx: #7a91aa;
+    --dd-bg:          #1e293b;
+    --dd-border:      #3b4f6a;
+    --dd-hover:       #334155;
+    --dd-active:      #1e3a5f;
+    --dd-text:        #cbd5e1;
+    --dd-label:       #64748b;
+    --sel-bar-bg:     #1c2a3a;
+    --sel-bar-border: #1e3a5f;
+    --sel-bar-text:   #93c5fd;
+    --trash-bg:       #1e293b;
+    --trash-border:   #475569;
+    --modal-bg:       #1e293b;
+    --scrollbar:      #334155;
+    --btn-ghost-bg:   #334155;
+    --btn-ghost-tx:   #94a3b8;
+    --stat-border:    #334155;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     CSS VARIABLES — Day mode overrides
+  ═══════════════════════════════════════════════════════════ */
+  body[data-theme="day"] {
+    --bg-base:        #e4ecf7;
+    --bg-panel:       #f0f4fb;
+    --bg-card:        #ffffff;
+    --border:         #dde4ef;
+    --border-sub:     #c8d4e6;
+    --text-1:         #0f172a;
+    --text-2:         #1e293b;
+    --text-3:         #475569;
+    --text-4:         #64748b;
+    --text-5:         #94a3b8;
+    --input-bg:       #ffffff;
+    --cap-bg:         #e2e8f0;
+    --legend-bg:      #f8fafc;
+    --corridor-path:  #94a3b8;
+    --station-bg:     rgba(240,244,251,0.96);
+    --station-border: #bfdbfe;
+    --station-label:  #1d4ed8;
+    --room-vacant-bg: #dde5f0;
+    --room-vacant-br: #b0bed4;
+    --room-vacant-tx: #64748b;
+    --dd-bg:          #ffffff;
+    --dd-border:      #dde4ef;
+    --dd-hover:       #f1f5f9;
+    --dd-active:      #dbeafe;
+    --dd-text:        #1e293b;
+    --dd-label:       #64748b;
+    --sel-bar-bg:     #eff6ff;
+    --sel-bar-border: #bfdbfe;
+    --sel-bar-text:   #1d4ed8;
+    --trash-bg:       #f1f5f9;
+    --trash-border:   #c8d4e6;
+    --modal-bg:       #ffffff;
+    --scrollbar:      #c8d4e6;
+    --btn-ghost-bg:   #e2e8f0;
+    --btn-ghost-tx:   #475569;
+    --stat-border:    #c8d4e6;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-1);
+    transition: background 0.25s, color 0.25s;
+  }
+  .nurse-panel { width: 400px; min-width: 320px; flex-shrink: 0; }
+  .room-panel  { flex: 1; position: relative; overflow: visible; }
+  .corridor-container { position: relative; width: 100%; height: 100%; }
+
+  /* ── Room card ── */
+  .room-card {
+    position: absolute;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    user-select: none;
+    z-index: 1;
+    overflow: visible;
+  }
+  .room-card:hover { transform: scale(1.1); z-index: 20; }
+  .room-card.selected { border-color: #4ade80 !important; box-shadow: 0 0 0 3px rgba(74,222,128,0.3); z-index: 10; }
+  .vacant  { background: var(--room-vacant-bg); border-color: var(--room-vacant-br); color: var(--room-vacant-tx); }
+  .female  { background: #f9a8d4; border-color: #ec4899; color: #831843; }
+  .male    { background: #bfdbfe; border-color: #60a5fa; color: #1e3a8a; }
+
+  /* Assign button – hidden until card is hovered */
+  .assign-btn {
+    display: none;
+    position: absolute; top: 2px; right: 2px;
+    width: 15px; height: 15px; border-radius: 4px;
+    background: rgba(15,23,42,0.75); border: 1px solid #475569;
+    color: #94a3b8; font-size: 11px; line-height: 1;
+    cursor: pointer; align-items: center; justify-content: center;
+    z-index: 5;
+  }
+  body[data-theme="day"] .assign-btn {
+    background: rgba(255,255,255,0.85); border-color: #94a3b8; color: #475569;
+  }
+  .room-card:hover .assign-btn { display: flex; }
+
+  /* ── Nurse card ── */
+  .nurse-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-sub);
+    border-radius: 10px;
+    padding: 9px 10px; margin-bottom: 7px; position: relative;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.25s;
+  }
+  .nurse-card.drag-over {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
+    background: rgba(34,197,94,0.04);
+  }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 3px 7px; border-radius: 5px; font-size: 11px; font-weight: 700;
+    cursor: grab; margin: 2px; white-space: nowrap;
+    transition: opacity 0.1s;
+  }
+  .badge:active { cursor: grabbing; opacity: 0.7; }
+  .badge-male   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .badge-female { background: #fce7f3; color: #9d174d; border: 1px solid #f9a8d4; }
+  .badge-preview {
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 3px 7px; border-radius: 5px; font-size: 11px; font-weight: 700;
+    margin: 2px; white-space: nowrap;
+    background: rgba(34,197,94,0.12); color: #86efac;
+    border: 1.5px dashed #22c55e; opacity: 0.85;
+    animation: pulse-in 0.2s ease;
+  }
+  @keyframes pulse-in { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 0.85; } }
+
+  /* ── Trash zone ── */
+  .trash-zone {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: transparent; border: 1px solid var(--border-sub);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; transition: all 0.15s; cursor: pointer; flex-shrink: 0;
+    opacity: 0.55;
+  }
+  .trash-zone:hover { opacity: 1; background: rgba(239,68,68,0.12); border-color: #ef4444; }
+  .trash-zone.drag-over { background: #7f1d1d; border-color: #ef4444; opacity: 1; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.68);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+  .modal {
+    background: var(--modal-bg); border-radius: 16px; padding: 24px; width: 360px;
+    border: 1px solid var(--border-sub);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+    transition: background 0.25s;
+  }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border-sub);
+  }
+  .toggle { width: 40px; height: 22px; border-radius: 11px; background: var(--border-sub); position: relative; cursor: pointer; transition: background 0.2s; border: none; flex-shrink: 0; }
+  .toggle.on { background: #22c55e; }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* ── Toast ── */
+  .warn-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #7f1d1d; color: #fca5a5; padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; z-index: 2000; border: 1px solid #ef4444; white-space: nowrap;
+    animation: fadeout 3s forwards; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  @keyframes fadeout { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0;pointer-events:none} }
+
+  /* ── Misc ── */
+  .corridor-path { fill: none; stroke: var(--corridor-path); stroke-width: 1.5; stroke-dasharray: 8 5; opacity: 0.45; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+  .nurse-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+  input[type=text] {
+    background: var(--input-bg); border: 1px solid var(--border-sub); color: var(--text-1);
+    border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 100%; outline: none;
+    transition: background 0.25s, border-color 0.15s;
+  }
+  input[type=text]:focus { border-color: #3b82f6; }
+  .btn { border-radius: 7px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.82; }
+  .btn-primary { background: #3b82f6; color: white; }
+  .btn-ghost   { background: var(--btn-ghost-bg); color: var(--btn-ghost-tx); }
+  .cap-bar  { height: 5px; border-radius: 3px; background: var(--cap-bg); overflow: hidden; margin-top: 5px; }
+  .cap-fill { height: 100%; border-radius: 3px; transition: width 0.35s; }
+  .flag { font-size: 9px; background: rgba(0,0,0,0.22); border-radius: 3px; padding: 1px 3px; margin: 1px; display: inline-block; line-height: 1.3; }
+  body[data-theme="day"] .flag { background: rgba(0,0,0,0.10); }
+
+  /* ── Room dropdown (portal, fixed) ── */
+  .room-dropdown {
+    position: fixed; z-index: 9999;
+    background: var(--dd-bg); border: 1px solid var(--dd-border); border-radius: 10px;
+    padding: 4px; min-width: 210px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.55);
+    animation: dd-in 0.12s ease;
+    transition: background 0.2s;
+  }
+  @keyframes dd-in { from { opacity:0; transform: translateY(-4px); } to { opacity:1; transform: translateY(0); } }
+  .dd-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; color: var(--dd-text); transition: background 0.1s;
+  }
+  .dd-item:hover { background: var(--dd-hover); }
+  .dd-item.active { background: var(--dd-active); }
+
+  /* ── Theme toggle button ── */
+  .theme-btn {
+    width: 34px; height: 20px; border-radius: 10px;
+    border: 1.5px solid var(--border-sub);
+    background: var(--bg-card);
+    cursor: pointer; position: relative;
+    display: flex; align-items: center; padding: 2px;
+    transition: background 0.25s, border-color 0.25s;
+    flex-shrink: 0;
+  }
+  .theme-btn-knob {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #3b82f6; transition: transform 0.25s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; line-height: 1;
+  }
+  body[data-theme="day"] .theme-btn-knob { transform: translateX(14px); background: #f59e0b; }
+
+  /* ── Center Dashboard ── */
+  .dash-card {
+    position: relative;
+    isolation: isolate;   /* own stacking context so ::before stays behind content */
+    border-radius: 20px;
+    transition: background 0.25s;
+  }
+  /* Subtle white border ring around dashboard */
+  .dash-card::before {
+    content: '';
+    position: absolute; inset: -2px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.20);
+    z-index: -1;
+  }
+  .dash-title { display: inline-block; }
+  .dash-sub   { opacity: 0.80; }
+
+  /* ── Dashboard background — deep burnt orange ── */
+  .dash-cockpit {
+    background: #c2410c !important;
+  }
+
+  /* ── Dashboard stat tiles ── */
+  .dash-tile {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 5px; padding: 12px 10px 10px; border-radius: 9px;
+    flex: 1 1 0; min-width: 0;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(0,0,0,0.12);
+    transition: background 0.12s, transform 0.08s;
+  }
+  .dash-tile-btn { cursor: pointer; }
+  .dash-tile-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.30); }
+  .dash-tile-btn:active { transform: scale(0.95); }
+  .dash-tile-active {
+    background: rgba(255,255,255,0.20);
+    border-color: rgba(255,255,255,0.42);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 0 0 2px rgba(255,255,255,0.08);
+  }
+
+  /* ── Rabbit animation ── */
+  /* Absolute overlay — full card width, no padding constraints */
+  .rabbit-track {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 20px 20px 0 0;
+    /* Ground: solid bottom border + inner shadow to give depth */
+    border-bottom: 1.5px solid rgba(255,255,255,0.28);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+  }
+  /* Soft ground glow just above the border */
+  .rabbit-track::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 10px;
+    background: linear-gradient(
+      to top,
+      rgba(255,255,255,0.07) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+  /* Layer 1: moves left ↔ right, alternates direction */
+  .rabbit-runner {
+    position: absolute;
+    bottom: 0;
+    left: -50px;
+    animation: rabbit-run 4.5s ease-in-out infinite alternate;
+  }
+  /* Layer 2: flips scaleX at the exact moment direction reverses.
+     Cycle = 2 × 4.5s = 9s so it stays in sync. step-end = instant snap. */
+  .rabbit-flip {
+    animation: rabbit-flip 9s step-end infinite;
+    display: inline-block;
+  }
+  /* Layer 3: vertical hop, independent of direction */
+  .rabbit-emoji {
+    display: inline-block;
+    font-size: 26px;
+    line-height: 1;
+    transform-origin: center bottom;
+    animation: rabbit-bob 0.36s ease-in-out infinite;
+  }
+  @keyframes rabbit-run {
+    from { left: -50px; }
+    to   { left: calc(100% + 30px); }
+  }
+  @keyframes rabbit-flip {
+    0%   { transform: scaleX(-1); }   /* face right — going left→right */
+    50%  { transform: scaleX(1);  }   /* face left  — going right→left */
+    100% { transform: scaleX(-1); }
+  }
+  @keyframes rabbit-bob {
+    0%, 100% { transform: translateY(0px)  scaleY(1);    }
+    30%      { transform: translateY(-8px) scaleY(1.08); }
+    60%      { transform: translateY(0px)  scaleY(0.92); }
+  }
+
+  /* ── ECO Toggle button ── */
+  .eco-toggle {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 11px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.2); cursor: pointer;
+    font-weight: 700; font-size: 10px; letter-spacing: 0.07em;
+    min-width: 76px; justify-content: center;
+    transition: background 0.22s, color 0.22s, box-shadow 0.22s, border-color 0.22s;
+  }
+  .eco-toggle-off {
+    background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.60);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .eco-toggle-off:hover {
+    background: rgba(255,255,255,0.17);
+    color: rgba(255,255,255,0.85);
+  }
+  .eco-toggle-on {
+    background: rgba(255,255,255,0.92);
+    color: #9a3412;
+    border-color: rgba(255,255,255,0.7);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.15);
+  }
+  .eco-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ── "crazy" title word ── */
+  .crazy-word {
+    font-size: 36px;
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: -1.5px;
+    display: inline-block;
+    transform: rotate(-4deg) skewX(-4deg);
+    background: linear-gradient(120deg, #ffffff 0%, #a1a1aa 30%, #3f3f46 58%, #18181b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% auto;
+    animation: crazy-shimmer 3s ease-in-out infinite, crazy-wobble 4s ease-in-out infinite;
+    filter: drop-shadow(0 0 14px rgba(255,255,255,0.30));
+  }
+  @keyframes crazy-shimmer {
+    0%, 100% { background-position: 0% center; }
+    50%       { background-position: 100% center; }
+  }
+  @keyframes crazy-wobble {
+    0%, 100% { transform: rotate(-4deg) skewX(-4deg) scale(1); }
+    25%       { transform: rotate(-2deg) skewX(-2deg) scale(1.04); }
+    75%       { transform: rotate(-5deg) skewX(-5deg) scale(0.97); }
+  }
+
+  /* ── Zap Assign button ── */
+  .zap-btn {
+    position: relative; overflow: hidden;
+    width: 100%; border: none; border-radius: 12px;
+    padding: 11px 14px;
+    background: linear-gradient(135deg, #6d28d9, #3b82f6, #06b6d4, #6d28d9);
+    background-size: 300% 300%;
+    animation: zap-bg 5s ease infinite;
+    color: #fff; font-weight: 800; font-size: 13px; letter-spacing: 0.05em;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 14px rgba(109,40,217,0.45), 0 0 0 1px rgba(255,255,255,0.12) inset;
+    transition: transform 0.1s, box-shadow 0.1s, filter 0.1s;
+    user-select: none;
+  }
+  .zap-btn::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 60%);
+    border-radius: inherit; pointer-events: none;
+  }
+  .zap-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(109,40,217,0.55), 0 0 0 1px rgba(255,255,255,0.16) inset;
+    filter: brightness(1.08);
+  }
+  .zap-btn:active:not(:disabled), .zap-btn.zap-pressed {
+    transform: scale(0.96) translateY(1px);
+    box-shadow: 0 2px 6px rgba(109,40,217,0.3);
+    filter: brightness(0.95);
+  }
+  .zap-btn:disabled { opacity: 0.75; cursor: default; }
+  @keyframes zap-bg {
+    0%,100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+  /* Icon spin */
+  @keyframes zap-spin {
+    to { transform: rotate(360deg); }
+  }
+  .zap-icon-spin { animation: zap-spin 0.3s linear infinite; display: inline-flex; }
+  /* Shimmer sweep on press */
+  @keyframes zap-shimmer {
+    0%   { left: -120%; }
+    100% { left: 140%; }
+  }
+  .zap-btn.zap-pressed::before {
+    content: ''; position: absolute; top: 0; left: -120%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+    animation: zap-shimmer 0.4s ease forwards;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect, useMemo } = React;
+
+// ── FEEDBACK / REINFORCEMENT STORE ────────────────────────────────────────────
+const FB_KEY = 'careflow_feedback_v1';
+const FB_BASELINE = { diam:1.0, load:1.0, acuity:1.0, teleCluster:1.0 };
+function loadFB() {
+  try { const s = JSON.parse(localStorage.getItem(FB_KEY)); return s || { entries:[], weights:{...FB_BASELINE} }; }
+  catch { return { entries:[], weights:{...FB_BASELINE} }; }
+}
+function saveFB(store) {
+  try { localStorage.setItem(FB_KEY, JSON.stringify(store)); } catch {}
+}
+
+// ── ROOM GENERATION ───────────────────────────────────────────────────────────
+const DOUBLE_ROOMS = new Set([1110,1111,1129,1130,1131,1132,1133,1134,1135]);
+function generateRooms() {
+  const list = [];
+  for (let n = 1101; n <= 1135; n++) {
+    DOUBLE_ROOMS.has(n) ? list.push(n+'A', n+'B') : list.push(String(n));
+  }
+  return list; // exactly 44
+}
+const ROOM_IDS = generateRooms();
+
+// ── HOSPITAL PHONE DIRECTORY — seed data from Hospital_Phone_Directory.xlsx ──
+const PHONE_DIR_KEY = 'careflow_phonedir_v1';
+const PHONE_DIR_SEED = {
+  internal: [
+    {id:'i1',  dept:'ACU (Acute Care Unit)',                  phone:'916-983-7503', ext:'37503', notes:''},
+    {id:'i2',  dept:'Admin Fax',                              phone:'916-986-4536', ext:'64536', notes:''},
+    {id:'i3',  dept:'Administration (Admin)',                 phone:'916-983-7410', ext:'37410', notes:''},
+    {id:'i4',  dept:'Admitting',                             phone:'',             ext:'37451', notes:''},
+    {id:'i5',  dept:'Admitting Fax',                         phone:'916-983-7554', ext:'37554', notes:''},
+    {id:'i6',  dept:'Aly Angeletti (CNEO)',                  phone:'916-984-7268', ext:'47268', notes:''},
+    {id:'i7',  dept:'Ambulatory Fax',                        phone:'916-983-7545', ext:'37545', notes:''},
+    {id:'i8',  dept:'ANS',                                   phone:'916-984-7288', ext:'47288', notes:''},
+    {id:'i9',  dept:'Bed Control',                           phone:'',             ext:'37586', notes:'Same as Patient Reg ER / ED Admitting'},
+    {id:'i10', dept:'Bio Med',                               phone:'916-986-4408', ext:'64408', notes:''},
+    {id:'i11', dept:'Birth Center Fax',                      phone:'916-983-7556', ext:'37556', notes:''},
+    {id:'i12', dept:'Cardiopulmonary',                       phone:'916-983-7456', ext:'37456', notes:''},
+    {id:'i13', dept:'Care Coordinator / Care Coordination',  phone:'916-983-7420', ext:'37420', notes:''},
+    {id:'i14', dept:'Case Management Fax',                   phone:'916-984-7308', ext:'47308', notes:''},
+    {id:'i15', dept:'Cashier Admitting',                     phone:'916-983-7451', ext:'37451', notes:''},
+    {id:'i16', dept:'Cashier Fax',                           phone:'916-984-7395', ext:'47395', notes:''},
+    {id:'i17', dept:'Chaplain',                              phone:'916-983-7436', ext:'37436', notes:''},
+    {id:'i18', dept:'CSPD',                                  phone:'',             ext:'37483', notes:''},
+    {id:'i19', dept:'David B P Hall (CFO)',                  phone:'916-984-7379', ext:'47379', notes:''},
+    {id:'i20', dept:'Dietary',                               phone:'',             ext:'37433', notes:''},
+    {id:'i21', dept:'Dietary Fax',                           phone:'916-983-7444', ext:'37444', notes:''},
+    {id:'i22', dept:'ED (Emergency Dept)',                   phone:'916-983-7470', ext:'37470', notes:''},
+    {id:'i23', dept:'ED Admitting / Patient Reg ER',         phone:'',             ext:'37586', notes:''},
+    {id:'i24', dept:'EEG',                                   phone:'916-537-5149', ext:'37455', notes:'MSJ EEG line'},
+    {id:'i25', dept:'EKG',                                   phone:'',             ext:'47362', notes:''},
+    {id:'i26', dept:'Elevator 1',                            phone:'',             ext:'46193', notes:''},
+    {id:'i27', dept:'Elevator 2',                            phone:'',             ext:'46195', notes:''},
+    {id:'i28', dept:'Elevator 3',                            phone:'',             ext:'46194', notes:''},
+    {id:'i29', dept:'Employee Health',                       phone:'916-984-7266', ext:'47266', notes:''},
+    {id:'i30', dept:'Endoscopy',                             phone:'',             ext:'47394', notes:''},
+    {id:'i31', dept:'Engineering',                           phone:'916-983-7585', ext:'37585', notes:''},
+    {id:'i32', dept:'ER Fax',                                phone:'916-983-7540', ext:'37540', notes:''},
+    {id:'i33', dept:'EVS (Environmental Services)',          phone:'',             ext:'47200', notes:''},
+    {id:'i34', dept:'Fax Machine',                           phone:'916-984-7315', ext:'47315', notes:''},
+    {id:'i35', dept:'FBC (Family Birth Center)',             phone:'916-983-7440', ext:'37440', notes:''},
+    {id:'i36', dept:'Food Services (Café)',                  phone:'916-983-7433', ext:'37433', notes:''},
+    {id:'i37', dept:'Front Desk',                            phone:'',             ext:'37411', notes:''},
+    {id:'i38', dept:'GI',                                    phone:'',             ext:'47215', notes:''},
+    {id:'i39', dept:'GI Lab',                                phone:'',             ext:'47394', notes:''},
+    {id:'i40', dept:'Gift Shop',                             phone:'916-983-7588', ext:'37588', notes:''},
+    {id:'i41', dept:'HIM Fax',                               phone:'916-983-7564', ext:'37564', notes:''},
+    {id:'i42', dept:'Hospitalist 4',                         phone:'916-986-4426', ext:'64426', notes:''},
+    {id:'i43', dept:'HR Fax',                                phone:'844-200-0124', ext:'',      notes:''},
+    {id:'i44', dept:'HR Folsom',                             phone:'916-537-5149', ext:'',      notes:''},
+    {id:'i45', dept:'HR — National',                         phone:'855-475-4747', ext:'',      notes:''},
+    {id:'i46', dept:'ICU (Intensive Care Unit)',             phone:'916-983-7465', ext:'37465', notes:''},
+    {id:'i47', dept:'ICU Fax',                               phone:'916-983-7542', ext:'37542', notes:''},
+    {id:'i48', dept:'Imaging Service Fax',                   phone:'916-983-7459', ext:'37459', notes:''},
+    {id:'i49', dept:'Infection Control Fax',                 phone:'916-986-4572', ext:'64572', notes:''},
+    {id:'i50', dept:'IT',                                    phone:'',             ext:'47340', notes:''},
+    {id:'i51', dept:'IV Therapy',                            phone:'',             ext:'64419', notes:''},
+    {id:'i52', dept:'John Gisla (VP CMO)',                   phone:'916-983-7466', ext:'37466', notes:''},
+    {id:'i53', dept:'Lab / Laboratory',                      phone:'916-983-7473', ext:'37473', notes:''},
+    {id:'i54', dept:'Lab Fax',                               phone:'916-984-7336', ext:'47336', notes:''},
+    {id:'i55', dept:'Labor & Delivery',                      phone:'916-983-7440', ext:'37440', notes:''},
+    {id:'i56', dept:'Lisa Hausmann (MSN/RN)',                phone:'916-984-7203', ext:'47203', notes:''},
+    {id:'i57', dept:'Lower ED Fax',                          phone:'916-984-7318', ext:'37567', notes:''},
+    {id:'i58', dept:'Main Entrance',                         phone:'916-883-7400', ext:'0',     notes:''},
+    {id:'i59', dept:'Marcy',                                 phone:'',             ext:'47209', notes:''},
+    {id:'i60', dept:'Material Management',                   phone:'916-983-7483', ext:'37483', notes:''},
+    {id:'i61', dept:'Med Tele NSM',                          phone:'',             ext:'64406', notes:''},
+    {id:'i62', dept:'Medical Records',                       phone:'916-983-7445', ext:'37445', notes:''},
+    {id:'i63', dept:'Medical Telemetry (MT)',                phone:'916-983-7460', ext:'37460', notes:''},
+    {id:'i64', dept:'Medical Telemetry Fax',                 phone:'916-983-7548', ext:'37548', notes:''},
+    {id:'i65', dept:'Monitor Tech',                          phone:'',             ext:'64452', notes:''},
+    {id:'i66', dept:'MRI',                                   phone:'',             ext:'64360', notes:''},
+    {id:'i67', dept:'MRI Fax',                               phone:'916-986-4580', ext:'64580', notes:''},
+    {id:'i68', dept:'MSO',                                   phone:'',             ext:'37503', notes:''},
+    {id:'i69', dept:'MSO Fax #2',                            phone:'916-983-7524', ext:'37524', notes:''},
+    {id:'i70', dept:'Nuclear Medicine (Nuc Med)',            phone:'916-983-7480', ext:'37480', notes:''},
+    {id:'i71', dept:'Nursing Fax',                           phone:'916-984-7324', ext:'47324', notes:''},
+    {id:'i72', dept:'Nutrition Services',                    phone:'916-983-7433', ext:'37433', notes:''},
+    {id:'i73', dept:'OR',                                    phone:'',             ext:'47366', notes:''},
+    {id:'i74', dept:'PACU',                                  phone:'916-983-7516', ext:'37516', notes:''},
+    {id:'i75', dept:'Palliative Care',                       phone:'916-986-4447', ext:'64447', notes:''},
+    {id:'i76', dept:'Patient Registration',                  phone:'916-983-7451', ext:'37451', notes:''},
+    {id:'i77', dept:'Patient Support Fax',                   phone:'916-983-7546', ext:'37546', notes:''},
+    {id:'i78', dept:'Pharmacy',                              phone:'916-983-7493', ext:'37493', notes:''},
+    {id:'i79', dept:'Pharmacy Fax',                          phone:'916-983-7517', ext:'37517', notes:''},
+    {id:'i80', dept:'Pharmis Fax',                           phone:'916-983-7589', ext:'37589', notes:''},
+    {id:'i81', dept:'Physical Therapy',                      phone:'',             ext:'37457', notes:''},
+    {id:'i82', dept:'Purchasing Fax',                        phone:'916-983-7482', ext:'37482', notes:''},
+    {id:'i83', dept:'Radiology',                             phone:'916-983-7476', ext:'37476', notes:''},
+    {id:'i84', dept:'Radiology Fax',                         phone:'916-983-7474', ext:'37474', notes:''},
+    {id:'i85', dept:'Rehab',                                 phone:'916-983-7457', ext:'37457', notes:''},
+    {id:'i86', dept:'Respiratory Therapy',                   phone:'916-984-7263', ext:'47263', notes:''},
+    {id:'i87', dept:'Riley / Riley West',                    phone:'',             ext:'37525', notes:''},
+    {id:'i88', dept:'Rita (Executive Coordinator)',          phone:'916-983-7426', ext:'37426', notes:''},
+    {id:'i89', dept:'SAU (Surgical Acute)',                  phone:'916-986-7740', ext:'67740', notes:'Also listed as 64440'},
+    {id:'i90', dept:'SAU Fax',                               phone:'916-986-4530', ext:'64530', notes:''},
+    {id:'i91', dept:'SAU NSM',                               phone:'',             ext:'64503', notes:''},
+    {id:'i92', dept:'Security (1)',                          phone:'916-984-7291', ext:'47291', notes:''},
+    {id:'i93', dept:'Security (2)',                          phone:'916-984-7277', ext:'47277', notes:''},
+    {id:'i94', dept:'Social Services',                       phone:'916-983-7570', ext:'37570', notes:''},
+    {id:'i95', dept:'Sonia (Executive Coordinator)',         phone:'916-984-7317', ext:'47317', notes:''},
+    {id:'i96', dept:'Sterile',                               phone:'',             ext:'47382', notes:''},
+    {id:'i97', dept:'Surgery',                               phone:'916-984-7339', ext:'47339', notes:'Also listed as XRAY ext'},
+    {id:'i98', dept:'Surgery Fax',                           phone:'916-983-7541', ext:'37541', notes:''},
+    {id:'i99', dept:'Surgery Office Fax',                    phone:'916-984-7270', ext:'47270', notes:''},
+    {id:'i100',dept:'Telecommunications',                    phone:'916-983-7599', ext:'37599', notes:''},
+    {id:'i101',dept:'TR',                                    phone:'',             ext:'47254', notes:''},
+    {id:'i102',dept:'Wound Care',                            phone:'',             ext:'64387', notes:''},
+    {id:'i103',dept:'Wound Care Fax',                        phone:'916-986-4534', ext:'64534', notes:''},
+    {id:'i104',dept:'X-Ray',                                 phone:'916-984-7339', ext:'47339', notes:''},
+    {id:'i105',dept:'X-Ray Tech',                            phone:'',             ext:'47338', notes:''},
+  ],
+  external: [
+    {id:'e1', name:'Kaiser Transfer Center',                phone:'888-327-0509', notes:'Main Kaiser transfer line'},
+    {id:'e2', name:'Transfer Center',                       phone:'916-851-2878', notes:''},
+    {id:'e3', name:'Pro Transport',                         phone:'877-225-9392', notes:'Patient transport'},
+    {id:'e4', name:'Alpha One',                             phone:'916-635-1111', notes:'Transport'},
+    {id:'e5', name:'Apria',                                 phone:'888-492-7742', notes:'DME / respiratory'},
+    {id:'e6', name:'DART',                                  phone:'855-788-3278', notes:'Help Desk: 888-307-0222'},
+    {id:'e7', name:'Abbott PaceInter (Pacemakers)',         phone:'800-722-3423', notes:''},
+    {id:'e8', name:'St Jude',                               phone:'800-722-3423', notes:'Pacemaker / device'},
+    {id:'e9', name:'Boston Scientific',                     phone:'800-227-3422', notes:'Pacemaker / device'},
+    {id:'e10',name:'Biotronik Pacemakers',                  phone:'800-547-0394', notes:''},
+    {id:'e11',name:'Anchor Orthotics & Prosthetics',        phone:'916-484-0685', notes:''},
+    {id:'e12',name:'Davita Dialysis',                       phone:'888-849-3342', notes:'OB'},
+    {id:'e13',name:'Poison Control',                        phone:'800-411-8080', notes:''},
+    {id:'e14',name:'Methodist MRI — Main',                  phone:'916-423-5956', notes:'Also used as fax'},
+    {id:'e15',name:'Methodist MRI Fax (alt)',               phone:'916-681-1704', notes:'Older listing — verify'},
+    {id:'e16',name:'Methodist MRI Direct',                  phone:'916-733-6496', notes:''},
+    {id:'e17',name:'MSJ MRI',                               phone:'916-864-8450', notes:''},
+    {id:'e18',name:'MSJ MRI Fax',                           phone:'916-537-5234', notes:''},
+    {id:'e19',name:'ANG / Moth Fax',                        phone:'916-453-4996', notes:''},
+    {id:'e20',name:'Woodland MRI',                          phone:'530-666-5336', notes:'MRI: option 2, ext 4969'},
+    {id:'e21',name:'Cerner Help (EIM)',                     phone:'916-851-2674', notes:'EHR support'},
+  ],
+  quickNotes: [
+    {id:'q1', note:'MSJ EEG',              detail:'(916) 537-5149'},
+    {id:'q2', note:'Kaiser Transfer Center',detail:'888-327-0509'},
+    {id:'q3', note:'Transfer Center',      detail:'(916) 851-2878'},
+    {id:'q4', note:'Riley',                detail:'37525'},
+    {id:'q5', note:'Davita Dialysis (OB)', detail:'888-849-3342'},
+    {id:'q6', note:'Boston Scientific',    detail:'800-227-3422'},
+    {id:'q7', note:'GI Lab',               detail:'47394'},
+    {id:'q8', note:'TR',                   detail:'47254'},
+    {id:'q9', note:'Marcy',                detail:'47209'},
+    {id:'q10',note:'ANG / Moth Fax',       detail:'916-453-4996'},
+    {id:'q11',note:'Methodist MRI Direct', detail:'733-6496'},
+    {id:'q12',note:'Methodist MRI Fax',    detail:'916-537-5234'},
+    {id:'q13',note:'Woodland MRI',         detail:'530-666-5336 (MRI: option 2, ext 4969)'},
+    {id:'q14',note:'National HR #',        detail:'855-475-4747'},
+    {id:'q15',note:'HR Fax #',             detail:'844-200-0124'},
+    {id:'q16',note:'HR Folsom',            detail:'(916) 537-5149'},
+    {id:'q17',note:'Bed Control',          detail:'37586'},
+    {id:'q18',note:'Sterile',              detail:'47382'},
+    {id:'q19',note:'X-Ray Tech',           detail:'47338'},
+    {id:'q20',note:'GI',                   detail:'47215'},
+    {id:'q21',note:'EKG',                  detail:'47362'},
+    {id:'q22',note:'Pharmacy',             detail:'37493'},
+    {id:'q23',note:'Abbott PaceInter',     detail:'800-722-3423'},
+    {id:'q24',note:'Apria',                detail:'888-492-7742'},
+    {id:'q25',note:'DART',                 detail:'855-788-3278 (Help Desk: 888-307-0222)'},
+  ],
+};
+function loadPhoneDir() {
+  try { const s = JSON.parse(localStorage.getItem(PHONE_DIR_KEY)); return s || PHONE_DIR_SEED; }
+  catch { return PHONE_DIR_SEED; }
+}
+function savePhoneDir(data) {
+  try { localStorage.setItem(PHONE_DIR_KEY, JSON.stringify(data)); } catch {}
+}
+let _pdIdCtr = 9000;
+function pdId() { return 'pd' + (++_pdIdCtr); }
+
+// ── CIRCULAR ROOM PROXIMITY ───────────────────────────────────────────────────
+// ROOM_IDS wraps around the corridor perimeter like a clock:
+//   top-row (0-13) → right-side (14-21) → bottom-row (22-35) → left-side (36-43)
+// So 1101 (idx 0) and 1135B (idx 43) are neighbours, and
+//    1112 (idx 13) and 1113 (idx 14) are neighbours at the top-right corner, etc.
+const _RIDX = Object.fromEntries(ROOM_IDS.map((id, i) => [id, i]));
+
+// Physical proximity overrides: rooms that share a real-world corner pocket
+// but appear far apart on the simple perimeter walk.
+// Cluster: 1121, 1122, 1123 (bottom-right) + 1111B, 1114, 1118 (right side).
+// Keys are always sorted so lookup is order-independent.
+const _PROX_OVERRIDE = new Map([
+  ['1111B|1114',  3],   // already 3, kept for explicitness
+  ['1111B|1118',  4],   // was 7
+  ['1111B|1121',  5],   // was 10
+  ['1111B|1122',  6],   // was 11
+  ['1111B|1123',  7],   // was 12
+  ['1114|1118',   4],   // already 4, kept for explicitness
+  ['1114|1121',   4],   // was 7
+  ['1114|1122',   5],   // was 8
+  ['1114|1123',   6],   // was 9
+  // 1118↔1121 (3), 1118↔1122 (4), 1118↔1123 (5) — corridor already correct
+]);
+function circDist(a, b) {
+  const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+  if (_PROX_OVERRIDE.has(key)) return _PROX_OVERRIDE.get(key);
+  const i = _RIDX[a], j = _RIDX[b];
+  if (i == null || j == null) return 99;
+  const d = Math.abs(i - j);
+  return Math.min(d, ROOM_IDS.length - d);
+}
+
+function initRooms() {
+  return ROOM_IDS.reduce((acc, id) => {
+    acc[id] = { id, occupied: false, gender: 'male', type: 'MEDSURG',
+                foley: false, drip: false, prisoner: false, totalCare: false,
+                glucose: false, highAcuity: false, sitter: false,
+                discharge: false, isolation: false,
+                restraint: false, centralLine: false, nurseId: null };
+    return acc;
+  }, {});
+}
+
+const NURSE_COLORS = ['#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4'];
+
+// ── FLAG DEFINITIONS ─────────────────────────────────────────────────────────
+// Centralized so RoomCard and NurseCard share the same colour palette.
+const FLAG_DEFS = [
+  { key:'foley',      label:'F',   bg:'#7c3aed', tc:'#fff' },
+  { key:'drip',       label:'IV',  bg:'#0369a1', tc:'#fff' },
+  { key:'prisoner',   label:'🔒',  bg:'#78350f', tc:'#fff' },
+  { key:'totalCare',  label:'TC',  bg:'#9f1239', tc:'#fff' },
+  { key:'glucose',    label:'BG',  bg:'#166534', tc:'#fff' },
+  { key:'highAcuity', label:'HA',  bg:'#b91c1c', tc:'#fff', glow:'#ef4444' },
+  { key:'sitter',     label:'ST',  bg:'#5b21b6', tc:'#fff' },
+  { key:'discharge',   label:'DC',  bg:'#0369a1', tc:'#bae6fd' },
+  { key:'isolation',   label:'☣',   bg:'#c2410c', tc:'#fff' },
+  { key:'restraint',   label:'RST', bg:'#7f1d1d', tc:'#fca5a5' },
+  { key:'centralLine', label:'CVL', bg:'#1e3a5f', tc:'#93c5fd' },
+];
+
+const STORAGE_KEY = 'careflow_assignment';
+const DEFAULT_NURSES = [
+  { id:'n1', name:'RN — Smith', color:NURSE_COLORS[0] },
+  { id:'n2', name:'RN — Jones', color:NURSE_COLORS[1] },
+  { id:'n3', name:'RN — Patel', color:NURSE_COLORS[2] },
+];
+
+function loadFromStorage() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }
+  catch(e) { return null; }
+}
+
+function mergeRooms(saved) {
+  const defaults = initRooms();
+  if (!saved) return defaults;
+  const out = {};
+  ROOM_IDS.forEach(id => { out[id] = { ...defaults[id], ...(saved[id] || {}) }; });
+  return out;
+}
+
+// ── ASSIGNMENT RULES ──────────────────────────────────────────────────────────
+function checkAssignment(nurseId, roomIds, allRooms) {
+  const rms = roomIds.map(id => allRooms[id]).filter(Boolean);
+  const hasTele = rms.some(r => r.occupied && r.type === 'TELE');
+  const cap = hasTele ? 4 : 5;
+  const occ = rms.filter(r => r.occupied);
+  if (occ.length > cap) return `Exceeds ${cap}-patient limit (${hasTele?'TELE':'Med/Surg'} group)`;
+  const cnt = k => occ.filter(r => r[k]).length;
+  if (cnt('glucose')    > 2) return 'Exceeds 2 glucose-check patients';
+  if (cnt('totalCare')  > 2) return 'Exceeds 2 total-care patients';
+  if (cnt('prisoner')   > 2) return 'Exceeds 2 prisoner patients';
+  if (cnt('highAcuity') > 2) return 'Exceeds 2 high-acuity patients';
+  if (cnt('drip')       > 2) return 'Exceeds 2 infusion-drip patients';
+  return null;
+}
+
+// ── CORRIDOR LAYOUT ───────────────────────────────────────────────────────────
+// A/B rooms get a tight PAIR_GAP; different room numbers get the normal GAP.
+// placeLine distributes cards along [start → end], scaling the normal gaps to fill
+// the available span while keeping pair gaps fixed and small.
+function getCorridorLayout(W, H) {
+  const PAD = 12, GAP = 6, PAIR_GAP = 2, CORNER_GAP = 18;
+  const TOP_N = 14, SIDE_N = 8;
+
+  // cw: fit TOP_N cards + (TOP_N-1) normal gaps across available width
+  const cw = Math.max(44, Math.min(72, Math.floor((W - 2*PAD - (TOP_N-1)*GAP) / TOP_N)));
+
+  // ch: total height = 2·PAD + (SIDE_N+2)·ch + 2·CORNER_GAP + (SIDE_N-1)·GAP
+  // corner cards are the top/bottom row cards at the four corners;
+  // CORNER_GAP is the breathing room between a corner card and the adjacent side card.
+  const ch = Math.max(36, Math.min(58, Math.floor((H - 2*PAD - 2*CORNER_GAP - (SIDE_N-1)*GAP) / (SIDE_N+2))));
+
+  const xL = PAD, xR = W - PAD - cw;
+  const yT = PAD, yB = H - PAD - ch;
+  const yMidT = yT + ch + CORNER_GAP;   // top edge of first side-column card
+  const yMidB = yB - ch - CORNER_GAP;   // top edge of last side-column card
+
+  // Returns true when idA/idB are the A and B beds of the same room number
+  function isPair(idA, idB) {
+    return idA.endsWith('A') && idB.endsWith('B') && idA.slice(0,-1) === idB.slice(0,-1);
+  }
+
+  // Place n cards from start to end with pair-aware gaps.
+  // cardSize = cw (horizontal) or ch (vertical).
+  // Direction is inferred from start vs end.
+  function placeLine(ids, start, end, cardSize) {
+    const n = ids.length;
+    if (n === 1) return [start];
+    const gapTypes = ids.slice(1).map((id, i) => isPair(ids[i], id) ? 'pair' : 'room');
+    const pairCnt  = gapTypes.filter(t => t === 'pair').length;
+    const roomCnt  = gapTypes.length - pairCnt;
+    const span     = Math.abs(end - start);          // from first-card start to last-card start
+    const S        = span - (n - 1) * cardSize;      // total gap pixels to distribute
+
+    // Minimum pair gap; scale room gaps to fill remaining space
+    let pairG, roomG;
+    if (S <= 0) {
+      pairG = roomG = 0;                             // cards touch — shouldn't happen at normal sizes
+    } else if (pairCnt > 0 && S < pairCnt * PAIR_GAP) {
+      pairG = roomG = S / (n - 1);                  // not enough room even for small pair gap, go uniform
+    } else {
+      pairG = PAIR_GAP;
+      roomG = roomCnt > 0 ? (S - pairCnt * PAIR_GAP) / roomCnt : PAIR_GAP;
+    }
+
+    const dir = end >= start ? 1 : -1;
+    const out = [start];
+    for (let i = 0; i < n - 1; i++) {
+      out.push(out[i] + dir * (cardSize + (gapTypes[i] === 'pair' ? pairG : roomG)));
+    }
+    return out;
+  }
+
+  // Slice ROOM_IDS into the four corridor sides
+  const topIds    = ROOM_IDS.slice(0,          TOP_N);
+  const rightIds  = ROOM_IDS.slice(TOP_N,      TOP_N + SIDE_N);
+  const bottomIds = ROOM_IDS.slice(TOP_N + SIDE_N, TOP_N + SIDE_N + TOP_N);
+  const leftIds   = ROOM_IDS.slice(TOP_N + SIDE_N + TOP_N);
+
+  const topX    = placeLine(topIds,    xL,    xR,    cw);   // left → right
+  const rightY  = placeLine(rightIds,  yMidT, yMidB, ch);   // top → bottom
+  const bottomX = placeLine(bottomIds, xR,    xL,    cw);   // right → left
+  const leftY   = placeLine(leftIds,   yMidB, yMidT, ch);   // bottom → top
+
+  const positions = [
+    ...topX.map(x    => ({ x, y: yT })),
+    ...rightY.map(y  => ({ x: xR, y })),
+    ...bottomX.map(x => ({ x, y: yB })),
+    ...leftY.map(y   => ({ x: xL, y })),
+  ];
+
+  return { positions, cw, ch };
+}
+
+// ── ROOM DROPDOWN (portal) ────────────────────────────────────────────────────
+function RoomDropdown({ room, nurses, nurseRooms, anchor, onAssign, onUnassign, onClose }) {
+  const ref = useRef();
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', h, true);
+    return () => document.removeEventListener('mousedown', h, true);
+  }, []);
+
+  const menuH = nurses.length * 38 + 60;
+  const spaceBelow = window.innerHeight - anchor.bottom;
+  const style = {
+    left: Math.min(anchor.left, window.innerWidth - 220),
+    ...(spaceBelow > menuH
+      ? { top: anchor.bottom + 4 }
+      : { bottom: window.innerHeight - anchor.top + 4 })
+  };
+
+  return ReactDOM.createPortal(
+    <div ref={ref} className="room-dropdown" style={style}>
+      <div style={{ padding:'5px 10px 6px', fontSize:10, color:'var(--dd-label)', borderBottom:'1px solid var(--border-sub)', fontWeight:700, letterSpacing:'0.05em' }}>
+        ASSIGN ROOM {room.id}
+      </div>
+      {nurses.map(n => {
+        const pts = (nurseRooms[n.id]||[]).length;
+        const isMe = room.nurseId === n.id;
+        return (
+          <div key={n.id} className={`dd-item${isMe?' active':''}`}
+            onClick={() => { onAssign(n.id); onClose(); }}>
+            <div style={{ width:8,height:8,borderRadius:'50%',background:n.color,flexShrink:0 }}/>
+            <span style={{ flex:1 }}>{n.name}</span>
+            <span style={{ fontSize:10,color:'var(--dd-label)' }}>{pts}pt</span>
+            {isMe && <span style={{ color:'#22c55e',fontSize:11 }}>✓</span>}
+          </div>
+        );
+      })}
+      {room.nurseId && (
+        <div className="dd-item" style={{ color:'#f87171',borderTop:'1px solid var(--border-sub)',marginTop:2 }}
+          onClick={() => { onUnassign(); onClose(); }}>
+          <span>✕</span><span>Unassign</span>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+// ── ROOM CARD ────────────────────────────────────────────────────────────────
+function RoomCard({ room, pos, cw, ch, selected, nurses, nurseRooms, onSelect, onDragStart, onDblClick, onAssignNurse, onUnassign }) {
+  const [anchor, setAnchor] = useState(null);
+  const cardRef = useRef();
+
+  let cls = 'room-card ';
+  if (!room.occupied) cls += 'vacant';
+  else if (room.gender === 'female') cls += 'female';
+  else cls += 'male';
+  if (selected) cls += ' selected';
+
+  const flags = FLAG_DEFS.filter(f => room[f.key]);
+
+  function openMenu(e) {
+    e.stopPropagation();
+    if (anchor) { setAnchor(null); return; }
+    setAnchor(cardRef.current.getBoundingClientRect());
+  }
+
+  return (
+    <>
+      <div ref={cardRef} className={cls}
+        style={{ left: pos.x, top: pos.y, width: cw, height: ch }}
+        onClick={onSelect}
+        onDoubleClick={onDblClick}
+        draggable={room.occupied}
+        onDragStart={onDragStart}
+        title={`Room ${room.id}${room.occupied ? (room.type==='TELE' ? ' · TELE' : ' · M/S') : ' · Vacant'}`}
+      >
+        {/* Assigned checkmark badge — always green */}
+        {room.nurseId && (
+          <div style={{
+            position:'absolute', top:-7, right:-7,
+            width:17, height:17, borderRadius:'50%',
+            background: '#22c55e',
+            border:'2px solid var(--bg-base)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:10, fontWeight:900, color:'white', lineHeight:1,
+            zIndex:3, boxShadow:'0 2px 6px rgba(0,0,0,0.5)'
+          }}>✓</div>
+        )}
+
+        {/* TELE heart — anchored top-left so it never competes with the room number for space */}
+        {room.occupied && room.type==='TELE' && (
+          <span style={{
+            position:'absolute', top:2, left:3,
+            color:'#f87171', fontSize: Math.max(9, Math.round(cw*0.19)),
+            lineHeight:1, pointerEvents:'none', userSelect:'none',
+          }}>♥</span>
+        )}
+
+        {/* Room number */}
+        {(() => {
+          const isAB  = room.id.endsWith('A') || room.id.endsWith('B');
+          const base  = isAB ? room.id.slice(0, -1) : room.id;
+          const suf   = isAB ? room.id.slice(-1) : '';
+          const fsz   = Math.max(11, Math.round(cw * 0.26));
+          return (
+            <div style={{ fontSize: fsz, fontWeight:700, letterSpacing:'-0.2px', lineHeight:1.1, display:'flex', alignItems:'baseline', gap:1 }}>
+              <span>{base}</span>
+              {suf && <span style={{ fontSize: Math.max(7, Math.round(fsz*0.78)), fontWeight:800, opacity:0.75 }}>{suf}</span>}
+            </div>
+          );
+        })()}
+
+        {/* Flags */}
+        {room.occupied && flags.length > 0 && (
+          <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:1, marginTop:2 }}>
+            {flags.slice(0, ch > 44 ? 4 : 2).map(f => (
+              <span key={f.key} style={{
+                fontSize:8, fontWeight:800, borderRadius:3,
+                padding:'1px 3px', lineHeight:1.3,
+                background: f.bg, color: f.tc,
+                boxShadow: f.glow ? `0 0 5px ${f.glow}88` : 'none',
+              }}>{f.label}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Assign button */}
+        {room.occupied && (
+          <button className="assign-btn" onClick={openMenu} title="Assign to nurse">+</button>
+        )}
+      </div>
+
+      {anchor && (
+        <RoomDropdown
+          room={room} nurses={nurses} nurseRooms={nurseRooms}
+          anchor={anchor}
+          onAssign={onAssignNurse}
+          onUnassign={onUnassign}
+          onClose={() => setAnchor(null)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── TOGGLE ────────────────────────────────────────────────────────────────────
+function Toggle({ on, onChange, label, color='#22c55e' }) {
+  return (
+    <div className="toggle-row">
+      <span style={{ fontSize:13, color:'var(--text-2)' }}>{label}</span>
+      <button className={`toggle${on?' on':''}`} style={on?{background:color}:{}} onClick={()=>onChange(!on)}/>
+    </div>
+  );
+}
+
+// ── PATIENT MODAL ─────────────────────────────────────────────────────────────
+function PatientModal({ room, onClose, onSave }) {
+  const [s, setS] = useState({...room});
+  const set = (k,v) => setS(p=>({...p,[k]:v}));
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <h2 style={{ margin:0, fontSize:18, fontWeight:700, color:'var(--text-1)' }}>Room {room.id}</h2>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="toggle-row">
+          <span style={{ fontSize:13, color:'var(--text-2)' }}>Occupied</span>
+          <button className={`toggle${s.occupied?' on':''}`} onClick={()=>set('occupied',!s.occupied)}/>
+        </div>
+
+        {s.occupied && (<>
+          <div className="toggle-row">
+            <span style={{ fontSize:13, color:'var(--text-2)' }}>Gender</span>
+            <div style={{ display:'flex', gap:6 }}>
+              {['male','female'].map(g=>(
+                <button key={g} className="btn" onClick={()=>set('gender',g)}
+                  style={{ background:s.gender===g?(g==='male'?'#1d4ed8':'#be185d'):'var(--btn-ghost-bg)', color:s.gender===g?'white':'var(--btn-ghost-tx)', padding:'4px 10px' }}>
+                  {g==='male'?'♂ Male':'♀ Female'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="toggle-row">
+            <span style={{ fontSize:13, color:'var(--text-2)' }}>Type</span>
+            <div style={{ display:'flex', gap:6 }}>
+              {['MEDSURG','TELE'].map(t=>(
+                <button key={t} className="btn" onClick={()=>set('type',t)}
+                  style={{ background:s.type===t?(t==='TELE'?'#dc2626':'#0369a1'):'var(--btn-ghost-bg)', color:s.type===t?'white':'var(--btn-ghost-tx)', padding:'4px 10px' }}>
+                  {t==='TELE'?'♥ TELE':'MED/SURG'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Toggle on={s.foley}      onChange={v=>set('foley',v)}      label="Foley Catheter"  color="#8b5cf6"/>
+          <Toggle on={s.drip}       onChange={v=>set('drip',v)}       label="Infusion Drip"   color="#0891b2"/>
+          <Toggle on={s.prisoner}   onChange={v=>set('prisoner',v)}   label="Prisoner"        color="#b45309"/>
+          <Toggle on={s.totalCare}  onChange={v=>set('totalCare',v)}  label="Total Care"      color="#be123c"/>
+          <Toggle on={s.glucose}    onChange={v=>set('glucose',v)}    label="Glucose Check"   color="#16a34a"/>
+          <Toggle on={s.highAcuity} onChange={v=>set('highAcuity',v)} label="High Acuity"     color="#ea580c"/>
+          <Toggle on={s.sitter}     onChange={v=>set('sitter',v)}     label="Sitter"          color="#7c3aed"/>
+          <Toggle on={s.discharge}   onChange={v=>set('discharge',v)}   label="Discharge"       color="#0ea5e9"/>
+          <Toggle on={s.isolation}   onChange={v=>set('isolation',v)}   label="Isolation"       color="#f97316"/>
+          <Toggle on={s.restraint}   onChange={v=>set('restraint',v)}   label="Restraint"       color="#dc2626"/>
+          <Toggle on={s.centralLine} onChange={v=>set('centralLine',v)} label="Central Line"    color="#3b82f6"/>
+        </>)}
+
+        <div style={{ display:'flex', gap:8, marginTop:16, justifyContent:'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={()=>onSave(s)}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── UNASSIGNED PANEL (dropdown, portal) ──────────────────────────────────────
+function UnassignedPanel({ rooms, nurses, nurseRooms, onAssign, onDragStart, onClose, anchor, triggerRef }) {
+  const ref = useRef();
+  const [dropdown, setDropdown] = useState(null); // { room, btnAnchor }
+
+  // Close on outside-click — but ignore clicks on the trigger button itself
+  // (the trigger handles its own open/close toggle)
+  useEffect(() => {
+    const h = e => {
+      if (triggerRef?.current?.contains(e.target)) return;
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', h, true);
+    return () => document.removeEventListener('mousedown', h, true);
+  }, []);
+
+  // Center horizontally on viewport; sit just below the trigger with safe bottom margin
+  const PW = 460;
+  const topPos = Math.min(anchor.bottom + 8, window.innerHeight - 80);
+
+  function openRoomDropdown(e, room) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdown(prev => prev?.room.id === room.id ? null : { room, anchor: rect });
+  }
+
+  return ReactDOM.createPortal(
+    <>
+      {/* Panel — horizontally centered, scrollable */}
+      <div ref={ref} style={{
+        position:'fixed',
+        left:'50%', transform:'translateX(-50%)',
+        top: topPos,
+        width: Math.min(PW, window.innerWidth - 24),
+        maxHeight: `calc(100vh - ${topPos + 16}px)`,
+        zIndex:600,
+        background:'var(--modal-bg)', border:'1px solid var(--border-sub)',
+        borderRadius:14, boxShadow:'0 16px 56px rgba(0,0,0,0.45)',
+        display:'flex', flexDirection:'column', overflow:'hidden',
+        animation:'dd-in 0.15s ease',
+      }}>
+
+        {/* Header */}
+        <div style={{ padding:'11px 14px 9px', borderBottom:'1px solid var(--border-sub)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:13, color:'var(--text-1)', display:'flex', alignItems:'center', gap:8 }}>
+              Unassigned Rooms
+              <span style={{ background:'#f59e0b', color:'white', borderRadius:10, padding:'1px 9px', fontSize:11, fontWeight:700 }}>
+                {rooms.length}
+              </span>
+            </div>
+            <div style={{ fontSize:10, color:'var(--text-4)', marginTop:3 }}>
+              Drag a chip to a nurse · or click <b style={{ color:'var(--text-2)' }}>+</b> to assign
+            </div>
+          </div>
+          <button className="btn btn-ghost" onClick={onClose} style={{ padding:'3px 8px', fontSize:12 }}>✕</button>
+        </div>
+
+        {/* Room chips */}
+        <div style={{ overflowY:'auto', flex:1, padding:'10px 12px' }}>
+          {rooms.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'22px 0', color:'#22c55e', fontSize:13, fontWeight:600 }}>
+              ✓ All occupied rooms are assigned!
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+              {rooms.map(r => {
+                const fem = r.gender === 'female';
+                const active = dropdown?.room.id === r.id;
+                return (
+                  <div
+                    key={r.id}
+                    draggable
+                    onDragStart={e => onDragStart(r.id, e)}
+                    style={{
+                      padding:'6px 8px 6px 10px', borderRadius:8, fontSize:12, fontWeight:700,
+                      display:'flex', alignItems:'center', gap:5, userSelect:'none',
+                      background: fem ? '#fce7f3' : '#dbeafe',
+                      color:       fem ? '#9d174d'  : '#1d4ed8',
+                      border:`1.5px solid ${fem ? '#f9a8d4' : '#93c5fd'}`,
+                      cursor:'grab', transition:'transform 0.1s, box-shadow 0.1s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform='scale(1.06)'; e.currentTarget.style.boxShadow='0 4px 14px rgba(0,0,0,0.18)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
+                  >
+                    {/* drag-handle dots */}
+                    <span style={{ opacity:0.35, fontSize:9, letterSpacing:'-1px', pointerEvents:'none' }}>⠿</span>
+                    <span>{r.id}</span>
+                    {r.type==='TELE' && <span style={{ color:'#f87171' }}>♥</span>}
+                    {r.sitter && <span style={{ fontSize:9, color:'#7c3aed' }}>ST</span>}
+                    {/* + assign button */}
+                    <button
+                      onClick={e => openRoomDropdown(e, r)}
+                      title="Assign to nurse"
+                      style={{
+                        width:18, height:18, borderRadius:4, border:'none', cursor:'pointer', flexShrink:0,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:14, lineHeight:1, fontWeight:900,
+                        background: active ? (fem?'#be185d':'#1d4ed8') : (fem?'rgba(190,24,93,0.15)':'rgba(29,78,216,0.15)'),
+                        color: active ? 'white' : (fem?'#be185d':'#1d4ed8'),
+                        transition:'background 0.15s, color 0.15s',
+                      }}
+                    >+</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        {rooms.length > 0 && (
+          <div style={{ padding:'7px 12px', borderTop:'1px solid var(--border-sub)', display:'flex', gap:10, fontSize:10, color:'var(--text-4)', flexShrink:0 }}>
+            <span>♥ = TELE</span>
+            <span style={{ background:'#fce7f3', color:'#9d174d', padding:'1px 6px', borderRadius:4 }}>Pink = Female</span>
+            <span style={{ background:'#dbeafe', color:'#1d4ed8', padding:'1px 6px', borderRadius:4 }}>Blue = Male</span>
+          </div>
+        )}
+      </div>
+
+      {/* Nurse picker dropdown for + button */}
+      {dropdown && (
+        <RoomDropdown
+          room={dropdown.room}
+          nurses={nurses}
+          nurseRooms={nurseRooms}
+          anchor={dropdown.anchor}
+          onAssign={nid => { onAssign(dropdown.room.id, nid); setDropdown(null); }}
+          onUnassign={() => setDropdown(null)}
+          onClose={() => setDropdown(null)}
+        />
+      )}
+    </>,
+    document.body
+  );
+}
+
+// ── WARNING MODAL ─────────────────────────────────────────────────────────────
+function WarningModal({ warning, onOverride, onCancel }) {
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onCancel()}>
+      <div className="modal" style={{ maxWidth:400 }}>
+        <div style={{ display:'flex', gap:14, alignItems:'flex-start', marginBottom:14 }}>
+          <span style={{ fontSize:32, lineHeight:1 }}>⚠️</span>
+          <div>
+            <h3 style={{ margin:0, fontSize:16, fontWeight:700, color:'#fbbf24' }}>Assignment Warning</h3>
+            <p style={{ margin:'8px 0 0', fontSize:13, color:'var(--text-2)', lineHeight:1.55 }}>{warning}</p>
+          </div>
+        </div>
+        <p style={{ margin:'0 0 18px', fontSize:12, color:'var(--text-4)' }}>
+          Override this rule and assign anyway?
+        </p>
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+          <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn" onClick={onOverride}
+            style={{ background:'#d97706', color:'white' }}>
+            Override & Assign
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── NURSE BADGE ───────────────────────────────────────────────────────────────
+function NurseBadge({ room, onDragStart }) {
+  const cls = room.gender==='female' ? 'badge badge-female' : 'badge badge-male';
+  return (
+    <span className={cls} draggable onDragStart={onDragStart}>
+      {room.id}
+      {room.type==='TELE' && <span style={{ color:'#f87171', marginLeft:2 }}>♥</span>}
+    </span>
+  );
+}
+
+// ── NURSE FEEDBACK STRIP (inline, per-nurse) ──────────────────────────────────
+const NURSE_FB_REASONS = [
+  { key:'spread',  label:'Too spread',      icon:'📍' },
+  { key:'load',    label:'Too many rooms',  icon:'⚖️' },
+  { key:'heavy',   label:'Too heavy',       icon:'🔴' },
+  { key:'mix',     label:'TELE/Med mix',    icon:'💔' },
+  { key:'cluster', label:'Lack of cluster', icon:'🗺️' },
+];
+function NurseFeedbackStrip({ onGood, onBad, nurseColor }) {
+  const [phase, setPhase] = React.useState('ask'); // ask | reason | done
+
+  if (phase === 'done') return (
+    <div style={{ marginTop:6, padding:'5px 8px', borderRadius:7, fontSize:10, textAlign:'center',
+      background:'rgba(34,197,94,0.08)', color:'#86efac', border:'1px solid rgba(34,197,94,0.2)' }}>
+      ✓ Feedback saved
+    </div>
+  );
+
+  if (phase === 'reason') return (
+    <div style={{ marginTop:6, padding:'6px 8px', borderRadius:7,
+      background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)' }}>
+      <div style={{ fontSize:9, color:'var(--text-4)', marginBottom:4, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>What's wrong?</div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+        {NURSE_FB_REASONS.map(r=>(
+          <button key={r.key} onClick={()=>{ onBad(r.key); setPhase('done'); }}
+            style={{ fontSize:9, padding:'3px 7px', borderRadius:10, border:'1px solid rgba(239,68,68,0.35)',
+              background:'rgba(239,68,68,0.12)', color:'#fca5a5', cursor:'pointer', display:'flex', alignItems:'center', gap:3 }}>
+            {r.icon} {r.label}
+          </button>
+        ))}
+        <button onClick={()=>setPhase('ask')}
+          style={{ fontSize:9, padding:'2px 5px', borderRadius:10, border:'none', background:'transparent', color:'var(--text-4)', cursor:'pointer', marginLeft:'auto' }}>✕</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop:6, padding:'5px 8px', borderRadius:7, display:'flex', alignItems:'center', gap:6,
+      background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
+      <span style={{ fontSize:9, color:'var(--text-4)', flex:1, fontWeight:600 }}>This assignment?</span>
+      <button onClick={()=>{ onGood(); setPhase('done'); }}
+        style={{ fontSize:10, padding:'3px 9px', borderRadius:10, border:'1px solid rgba(34,197,94,0.4)',
+          background:'rgba(34,197,94,0.12)', color:'#86efac', cursor:'pointer', fontWeight:700 }}>👍</button>
+      <button onClick={()=>setPhase('reason')}
+        style={{ fontSize:10, padding:'3px 9px', borderRadius:10, border:'1px solid rgba(239,68,68,0.4)',
+          background:'rgba(239,68,68,0.12)', color:'#fca5a5', cursor:'pointer', fontWeight:700 }}>👎</button>
+    </div>
+  );
+}
+
+// ── NURSE CARD ────────────────────────────────────────────────────────────────
+function NurseCard({ nurse, rooms, allRooms, previewIds, onRemoveAll, onDrop, onRename, onDelete, locked, onToggleLock, showFeedback, onFeedbackGood, onFeedbackBad }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [trashOver, setTrashOver] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nameVal, setNameVal] = useState(nurse.name);
+  const inputRef = useRef();
+
+  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  const nurseRms = rooms.map(id=>allRooms[id]).filter(Boolean);
+  const occ = nurseRms.filter(r=>r.occupied);
+  const hasTele = occ.some(r=>r.type==='TELE');
+  const cap = hasTele ? 4 : 5;
+  const pct = Math.min((occ.length/cap)*100, 100);
+  const capColor = pct>=100 ? '#ef4444' : pct>=75 ? '#f59e0b' : '#22c55e';
+
+  const flagDefs = FLAG_DEFS; // shared definition
+
+  const incomingPreview = dragOver
+    ? (previewIds||[]).filter(id => !rooms.includes(id) && allRooms[id]?.occupied)
+    : [];
+
+  return (
+    <div
+      className={`nurse-card${dragOver&&!trashOver?' drag-over':''}`}
+      style={{ borderLeft:`3px solid ${nurse.color}` }}
+      onDragOver={e=>{ e.preventDefault(); if(!trashOver) setDragOver(true); }}
+      onDragLeave={e=>{ if(!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
+      onDrop={e=>{ e.preventDefault(); setDragOver(false); onDrop(e,false); }}
+    >
+      {/* Header row */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+        <div className="nurse-color-dot" style={{ background:nurse.color }}/>
+        {editing ? (
+          <input ref={inputRef} type="text" value={nameVal}
+            onChange={e=>setNameVal(e.target.value)}
+            onBlur={()=>{
+              const v = nameVal.trim();
+              if (v) onRename(v); else setNameVal(nurse.name);
+              setEditing(false);
+            }}
+            onKeyDown={e=>{
+              if(e.key==='Enter'){
+                const v = nameVal.trim();
+                if (v) onRename(v); else setNameVal(nurse.name);
+                setEditing(false);
+              }
+              if(e.key==='Escape'){ setNameVal(nurse.name); setEditing(false); }
+            }}
+            style={{ flex:1, padding:'2px 6px', fontSize:13 }}
+          />
+        ) : (
+          <span style={{ flex:1, fontWeight:700, fontSize:15, cursor:'text', color:'var(--text-1)' }}
+            onDoubleClick={()=>{ setNameVal(nurse.name); setEditing(true); }}>
+            {nurse.name}
+          </span>
+        )}
+        <span style={{
+          fontSize:11, fontWeight:700, letterSpacing:'0.02em',
+          color: pct>=100 ? '#ef4444' : pct>=75 ? '#f59e0b' : 'var(--text-3)',
+          background: pct>=100 ? 'rgba(239,68,68,0.12)' : pct>=75 ? 'rgba(245,158,11,0.12)' : 'transparent',
+          padding: pct>=75 ? '1px 5px' : '0', borderRadius:4,
+          transition:'color 0.2s, background 0.2s',
+        }}>{occ.length}/{cap}</span>
+        {hasTele && <span style={{ fontSize:10, background:'rgba(127,29,29,0.7)', color:'#fca5a5', borderRadius:4, padding:'1px 6px', letterSpacing:'0.04em' }}>TELE</span>}
+        {/* Lock toggle — protects this nurse's rooms from Zap Assign reset */}
+        <button
+          onClick={onToggleLock}
+          title={locked ? 'Locked — rooms kept on Zap Assign' : 'Unlocked — rooms reset on Zap Assign'}
+          style={{
+            background: locked ? 'rgba(251,191,36,0.18)' : 'transparent',
+            border: locked ? '1px solid rgba(251,191,36,0.55)' : '1px solid transparent',
+            borderRadius: 6, padding:'2px 5px', cursor:'pointer', fontSize:13, lineHeight:1,
+            transition:'background 0.15s, border-color 0.15s',
+          }}
+        >{locked ? '🔒' : '🔓'}</button>
+        <div className={`trash-zone${trashOver?' drag-over':''}`}
+          onDragOver={e=>{ e.preventDefault(); e.stopPropagation(); setTrashOver(true); setDragOver(false); }}
+          onDragLeave={()=>setTrashOver(false)}
+          onDrop={e=>{ e.preventDefault(); e.stopPropagation(); setTrashOver(false); setDragOver(false); onDrop(e,true); }}
+          onClick={onDelete}
+          title="Drop room here to remove · Click to delete nurse"
+        >🗑</div>
+      </div>
+
+      {/* Capacity bar */}
+      <div className="cap-bar">
+        <div className="cap-fill" style={{ width:pct+'%', background:capColor }}/>
+      </div>
+
+      {/* Flag pills */}
+      <div style={{ display:'flex', gap:3, marginTop:5, flexWrap:'wrap' }}>
+        {flagDefs.map(f=>{
+          const c = occ.filter(r=>r[f.key]).length;
+          if(!c) return null;
+          return <span key={f.key} style={{ fontSize:9, padding:'1px 5px', borderRadius:4, fontWeight:700,
+            background: c>=2 ? f.bg : 'var(--bg-base)',
+            color:      c>=2 ? f.tc : 'var(--text-3)',
+            border:`1px solid ${f.bg}`,
+            boxShadow: c>=2 && f.glow ? `0 0 6px ${f.glow}66` : 'none' }}>
+            {c} {f.label}
+          </span>;
+        })}
+      </div>
+
+      {/* Room badges — sorted in natural corridor order (1101, 1102 … 1110A, 1110B …) */}
+      <div style={{ display:'flex', flexWrap:'wrap', marginTop:6, gap:3, minHeight: occ.length===0 ? 28 : 10,
+        alignItems:'center', justifyContent: occ.length===0 ? 'center' : 'flex-start' }}>
+        {occ.length===0 && !dragOver && (
+          <span style={{ fontSize:10, color:'var(--text-5)', letterSpacing:'0.04em', userSelect:'none',
+            display:'flex', alignItems:'center', gap:4 }}>
+            <span style={{ opacity:0.5 }}>↓</span> drag rooms here
+          </span>
+        )}
+        {[...rooms].sort((a,b) => _RIDX[a] - _RIDX[b]).map(id=>{
+          const r = allRooms[id];
+          if(!r?.occupied) return null;
+          return (
+            <NurseBadge key={id} room={r}
+              onDragStart={e=>{ e.dataTransfer.setData('badgeRoomId',id); e.dataTransfer.setData('fromNurseId',nurse.id); }}
+            />
+          );
+        })}
+        {incomingPreview.map(id=>{
+          const r = allRooms[id];
+          return (
+            <span key={'p'+id} className="badge-preview">
+              {id}{r.type==='TELE'&&<span style={{ color:'#f87171',marginLeft:2 }}>♥</span>}
+            </span>
+          );
+        })}
+      </div>
+
+      {rooms.length>0 && (
+        <button className="btn btn-ghost" onClick={onRemoveAll}
+          style={{ fontSize:10, padding:'2px 8px', marginTop:6, width:'100%' }}>
+          Remove All Rooms
+        </button>
+      )}
+
+      {/* Per-nurse Zap feedback strip */}
+      {showFeedback && <NurseFeedbackStrip onGood={onFeedbackGood} onBad={onFeedbackBad} nurseColor={nurse.color} />}
+    </div>
+  );
+}
+
+// ── LEGEND ────────────────────────────────────────────────────────────────────
+function Legend() {
+  const sw = (bg) => ({ width:10,height:10,borderRadius:3,background:bg,display:'inline-block' });
+  return (
+    <div style={{ padding:'7px 10px', background:'var(--legend-bg)', borderRadius:8, fontSize:10, display:'flex', flexWrap:'wrap', gap:'6px 12px', color:'var(--text-3)', transition:'background 0.25s' }}>
+      <span style={{ display:'flex',alignItems:'center',gap:4 }}><span style={sw('var(--room-vacant-bg)')}/>Vacant</span>
+      <span style={{ display:'flex',alignItems:'center',gap:4 }}><span style={sw('#bfdbfe')}/>Male</span>
+      <span style={{ display:'flex',alignItems:'center',gap:4 }}><span style={sw('#f9a8d4')}/>Female</span>
+      <span>♥ TELE</span><span>F=Foley</span><span>IV=Drip</span><span>TC=Total Care</span><span>BG=Glucose</span><span>HA=High Acuity</span>
+    </div>
+  );
+}
+
+// ── CENTER DASHBOARD ─────────────────────────────────────────────────────────
+// Unified car-dashboard tile: same shape for all stats.
+// Pass onClick to make it interactive (unassigned dropdown trigger).
+function DashTile({ icon, value, label, color, accentColor, onClick, active, btnRef }) {
+  const isBtn = !!onClick;
+  const numColor = accentColor || color;
+  return (
+    <div
+      ref={btnRef}
+      onClick={onClick}
+      className={`dash-tile${isBtn ? ' dash-tile-btn' : ''}${active ? ' dash-tile-active' : ''}`}
+    >
+      {/* Icon */}
+      {icon && (
+        <div style={{ fontSize:12, lineHeight:1, opacity:0.75, marginBottom:1 }}>{icon}</div>
+      )}
+      {/* Value */}
+      <div style={{
+        fontSize:24, fontWeight:900, color: numColor, lineHeight:1,
+        textShadow: `0 0 12px ${numColor}66`,
+        letterSpacing:'-0.5px',
+      }}>{value}</div>
+      {/* Label */}
+      <div style={{
+        fontSize:9, fontWeight:700, letterSpacing:'0.06em',
+        textTransform:'uppercase', color:'rgba(255,255,255,0.60)',
+        lineHeight:1, paddingLeft:4, paddingRight:4, textAlign:'center',
+      }}>{label}</div>
+      {/* Chevron */}
+      <div style={{
+        fontSize:8, color: numColor, lineHeight:1, marginTop:1,
+        opacity: isBtn ? (active ? 0.9 : 0.30) : 0,
+        visibility: isBtn ? 'visible' : 'hidden',
+        transform: active ? 'rotate(180deg)' : 'none',
+        transition:'transform 0.2s, opacity 0.2s',
+      }}>▾</div>
+    </div>
+  );
+}
+
+// ── AI Zap icon (lightning + circuit nodes) ───────────────────────────────────
+function ZapAIIcon({ spinning }) {
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center',
+      animation: spinning ? 'zap-spin 0.3s linear infinite' : 'none',
+      transformOrigin:'center' }}>
+      <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
+        {/* Lightning bolt */}
+        <path d="M12 2L3.5 11H9L7 18l9.5-9H11L13 2z" fill="white"/>
+        {/* Circuit node top-left */}
+        <circle cx="2" cy="4" r="1.6" fill="white" opacity="0.55"/>
+        <line x1="2" y1="4" x2="5.5" y2="7.5" stroke="white" strokeWidth="0.9" opacity="0.45"/>
+        {/* Circuit node bottom-right */}
+        <circle cx="18" cy="16" r="1.6" fill="white" opacity="0.55"/>
+        <line x1="18" y1="16" x2="14.5" y2="12.5" stroke="white" strokeWidth="0.9" opacity="0.45"/>
+        {/* Circuit node mid-right */}
+        <circle cx="18.5" cy="7" r="1.2" fill="white" opacity="0.40"/>
+        <line x1="18.5" y1="7" x2="15" y2="9" stroke="white" strokeWidth="0.8" opacity="0.35"/>
+      </svg>
+    </span>
+  );
+}
+
+// ── STAT ROOM POPUP — generic popup listing rooms for a given property ────────
+function StatRoomPopup({ title, icon, color, rooms, allRooms, nurseRooms, nurses, anchor, onClose }) {
+  const ref = React.useRef();
+
+  // Close on outside click
+  React.useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', h, true);
+    return () => document.removeEventListener('mousedown', h, true);
+  }, []);
+
+  // Center below the anchor tile
+  const PW = 380;
+  const topPos = anchor ? Math.min(anchor.bottom + 8, window.innerHeight - 80) : 200;
+
+  // Build nurse lookup: roomId → nurse name
+  const nurseByRoom = {};
+  nurses.forEach(n => { (nurseRooms[n.id]||[]).forEach(id => { nurseByRoom[id] = n; }); });
+
+  const sorted = [...rooms].sort((a,b) => _RIDX[a.id] - _RIDX[b.id]);
+
+  return ReactDOM.createPortal(
+    <div ref={ref} style={{
+      position:'fixed',
+      left:'50%', transform:'translateX(-50%)',
+      top: topPos,
+      width: Math.min(PW, window.innerWidth - 24),
+      maxHeight: `calc(100vh - ${topPos + 16}px)`,
+      zIndex:610,
+      background:'var(--modal-bg)', border:'1px solid var(--border-sub)',
+      borderRadius:14, boxShadow:'0 16px 56px rgba(0,0,0,0.45)',
+      display:'flex', flexDirection:'column', overflow:'hidden',
+      animation:'dd-in 0.15s ease',
+    }}>
+      {/* Header */}
+      <div style={{ padding:'11px 14px 9px', borderBottom:'1px solid var(--border-sub)',
+        display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+        <div style={{ fontWeight:700, fontSize:13, color:'var(--text-1)', display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:16 }}>{icon}</span>
+          {title}
+          <span style={{ background:color, color:'#fff', borderRadius:10, padding:'1px 9px', fontSize:11, fontWeight:700 }}>
+            {rooms.length}
+          </span>
+        </div>
+        <button className="btn btn-ghost" onClick={onClose} style={{ padding:'3px 8px', fontSize:12 }}>✕</button>
+      </div>
+      {/* Room list */}
+      <div style={{ overflowY:'auto', flex:1, padding:'10px 12px' }}>
+        {rooms.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'22px 0', color:'var(--text-4)', fontSize:13 }}>
+            No rooms with this flag
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+            {sorted.map(r => {
+              const nurse = nurseByRoom[r.id];
+              const fem   = r.gender === 'female';
+              return (
+                <div key={r.id} style={{
+                  padding:'6px 10px', borderRadius:8, fontSize:12, fontWeight:700,
+                  display:'flex', alignItems:'center', gap:6,
+                  background: fem ? '#fce7f3' : '#dbeafe',
+                  color:      fem ? '#9d174d'  : '#1d4ed8',
+                  border:`1.5px solid ${fem ? '#f9a8d4' : '#93c5fd'}`,
+                }}>
+                  <span>{r.id}</span>
+                  {r.type==='TELE' && <span style={{ color:'#f87171' }}>♥</span>}
+                  {nurse && (
+                    <span style={{
+                      fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4,
+                      background: nurse.color+'33', color: nurse.color,
+                      border:`1px solid ${nurse.color}66`,
+                    }}>{nurse.name.split(' ')[0]}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* Legend */}
+      <div style={{ padding:'7px 12px', borderTop:'1px solid var(--border-sub)',
+        display:'flex', gap:10, fontSize:10, color:'var(--text-4)', flexShrink:0 }}>
+        <span style={{ background:'#fce7f3', color:'#9d174d', padding:'1px 6px', borderRadius:4 }}>Pink = Female</span>
+        <span style={{ background:'#dbeafe', color:'#1d4ed8', padding:'1px 6px', borderRadius:4 }}>Blue = Male</span>
+        <span style={{ marginLeft:'auto' }}>♥ = TELE</span>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── FEEDBACK BAR ──────────────────────────────────────────────────────────────
+const FB_REASONS = [
+  { key:'spread',     label:'Rooms too spread out',  icon:'📍' },
+  { key:'load',       label:'Uneven workload',        icon:'⚖️' },
+  { key:'heavy',      label:'Too many heavy rooms',   icon:'🔴' },
+  { key:'mix',        label:'TELE/Med mixed',         icon:'💔' },
+  { key:'cluster',    label:'Lack of cluster',        icon:'🗺️' },
+];
+
+function FeedbackBar({ onGood, onBad }) {
+  const [phase, setPhase] = React.useState('ask'); // 'ask' | 'reason' | 'done-good' | 'done-bad'
+
+  function handleGood() {
+    onGood();
+    setPhase('done-good');
+  }
+  function handleBad(key) {
+    onBad(key);
+    setPhase('done-bad');
+  }
+
+  const base = {
+    marginTop:10, borderRadius:10, padding:'9px 12px', fontSize:12,
+    display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
+    background:'rgba(0,0,0,0.22)', border:'1px solid rgba(255,255,255,0.12)',
+  };
+
+  if (phase === 'done-good') return (
+    <div style={{...base, justifyContent:'center', color:'#86efac'}}>
+      ✓ Got it — reinforcing this pattern
+    </div>
+  );
+  if (phase === 'done-bad') return (
+    <div style={{...base, justifyContent:'center', color:'#fca5a5'}}>
+      ✓ Noted — adjusting for next time
+    </div>
+  );
+  if (phase === 'reason') return (
+    <div style={base}>
+      <span style={{color:'rgba(255,255,255,0.6)', fontSize:11, flexShrink:0}}>What's wrong?</span>
+      {FB_REASONS.map(r => (
+        <button key={r.key} onClick={() => handleBad(r.key)} style={{
+          background:'rgba(239,68,68,0.18)', border:'1px solid rgba(239,68,68,0.4)',
+          color:'#fca5a5', borderRadius:16, padding:'3px 10px', fontSize:11,
+          cursor:'pointer', display:'flex', alignItems:'center', gap:4,
+        }}>{r.icon} {r.label}</button>
+      ))}
+      <button onClick={()=>setPhase('ask')} style={{marginLeft:'auto',background:'transparent',border:'none',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontSize:12}}>✕</button>
+    </div>
+  );
+  return (
+    <div style={base}>
+      <span style={{color:'rgba(255,255,255,0.65)', fontSize:11, flex:1}}>How was this assignment?</span>
+      <button onClick={handleGood} style={{
+        background:'rgba(34,197,94,0.18)', border:'1px solid rgba(34,197,94,0.4)',
+        color:'#86efac', borderRadius:16, padding:'4px 14px', fontSize:12, cursor:'pointer', fontWeight:700,
+      }}>👍 Good</button>
+      <button onClick={()=>setPhase('reason')} style={{
+        background:'rgba(239,68,68,0.18)', border:'1px solid rgba(239,68,68,0.4)',
+        color:'#fca5a5', borderRadius:16, padding:'4px 14px', fontSize:12, cursor:'pointer', fontWeight:700,
+      }}>👎 Needs work</button>
+    </div>
+  );
+}
+
+function CenterDashboard({ vacant, occupied, assigned, unassigned, tele, sitter,
+                           discharge, isolation, restraint, centralLine, foley,
+                           sitterRooms, dischargeRooms, isolationRooms, centralLineRooms, foleyRooms,
+                           nurses, nurseRooms,
+                           unassignedOpen, onUnassignedClick, unassignedBtnRef,
+                           onZapAssign, zapLoading, fuelMode, onToggleFuel,
+                           fbWeights }) {
+  const [pressed, setPressed] = React.useState(false);
+  // popup state: null | { key, anchor }
+  const [statPopup, setStatPopup] = React.useState(null);
+  const sitterRef      = React.useRef();
+  const dischargeRef   = React.useRef();
+  const isolationRef   = React.useRef();
+  const centralLineRef = React.useRef();
+  const foleyRef       = React.useRef();
+
+  function toggleStatPopup(key, ref) {
+    setStatPopup(prev => prev?.key === key ? null : { key, anchor: ref.current?.getBoundingClientRect() });
+  }
+
+  // Is the model tuned away from baseline?
+  const isTuned = fbWeights && Object.entries(fbWeights).some(([,v]) => Math.abs(v - 1.0) > 0.05);
+
+  function handleZap() {
+    if (zapLoading) return;
+    setPressed(true);
+    setTimeout(() => setPressed(false), 400);
+    onZapAssign();
+  }
+
+  return (
+    <div className="dash-card dash-cockpit" style={{
+      padding:'56px 22px 20px',
+      boxShadow:`
+        inset 0 1px 0 rgba(255,255,255,0.07),
+        inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 4px 12px rgba(0,0,0,0.5),
+        0 16px 36px rgba(0,0,0,0.55),
+        0 32px 64px rgba(0,0,0,0.35)`,
+    }}>
+
+      {/* ── Rabbit running across the top ── */}
+      <div className="rabbit-track">
+        <div className="rabbit-runner">
+          <div className="rabbit-flip">
+            <span className="rabbit-emoji">🐇</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom:14, marginTop:10, paddingBottom:12, borderBottom:'1px solid transparent',
+        display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center',
+          gap:6, flexWrap:'nowrap', lineHeight:1 }}>
+          <span style={{ fontSize:22 }}>🧠</span>
+          <span style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.55)',
+            letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>Driven by a</span>
+          <span className="crazy-word">crazy</span>
+          <span style={{ fontSize:20, fontWeight:900, color:'rgba(255,255,255,0.92)',
+            letterSpacing:'-0.5px', whiteSpace:'nowrap' }}>mind</span>
+        </div>
+        {/* ── Fuel Efficiency Toggle ── */}
+        <button
+          onClick={onToggleFuel}
+          title={fuelMode ? 'Fuel Efficiency ON — MedSurg priority' : 'Fuel Efficiency OFF'}
+          className={`eco-toggle ${fuelMode ? 'eco-toggle-on' : 'eco-toggle-off'}`}
+        >
+          <span className="eco-icon">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="4" width="11" height="14" rx="2" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M13 8h2a2 2 0 012 2v2a2 2 0 01-2 2h-2" stroke="currentColor" strokeWidth="1.8"/>
+              <rect x="4" y="10" width={fuelMode ? 7 : 2} height="3" rx="1" fill="currentColor"
+                style={{transition:'width 0.3s ease'}}/>
+              <line x1="4" y1="8" x2="11" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </span>
+          {/* Fixed-width label — never changes width so title stays stable */}
+          <span>ECO</span>
+          {/* ON indicator dot — appears/disappears in place */}
+          <span style={{
+            width:6, height:6, borderRadius:'50%',
+            background: fuelMode ? '#c2410c' : 'transparent',
+            transition:'background 0.22s',
+            flexShrink:0,
+          }}/>
+        </button>
+      </div>
+
+      {/* ── Single row: all stats ── */}
+      <div style={{ display:'flex', gap:10, alignItems:'stretch' }}>
+        <DashTile icon="□" value={vacant}     label="Empty"      color="rgba(255,255,255,0.55)" />
+        <DashTile icon="●" value={occupied}   label="Occupied"   color="#fff" />
+        <DashTile icon="✓" value={assigned}   label="Assigned"   color={assigned===occupied&&occupied>0 ? '#86efac' : '#fff'}
+          accentColor={assigned===occupied&&occupied>0 ? '#86efac' : undefined} />
+        <DashTile icon="!" value={unassigned} label="Unassigned"
+          color={unassigned>0 ? '#fbbf24' : '#fff'}
+          accentColor={unassigned>0 ? '#fbbf24' : undefined}
+          onClick={onUnassignedClick} active={unassignedOpen} btnRef={unassignedBtnRef} />
+        <DashTile icon="♥" value={tele}        label="TELE"      color={tele>0 ? '#f87171' : '#fff'} accentColor={tele>0 ? '#f87171' : undefined} />
+        <DashTile icon="👁" value={sitter}      label="Sitter"    color={sitter>0 ? '#c4b5fd' : '#fff'} accentColor={sitter>0 ? '#c4b5fd' : undefined}
+          onClick={()=>toggleStatPopup('sitter',sitterRef)} active={statPopup?.key==='sitter'} btnRef={sitterRef} />
+        <DashTile icon="🚪" value={discharge}   label="Discharge" color={discharge>0 ? '#7dd3fc' : '#fff'} accentColor={discharge>0 ? '#7dd3fc' : undefined}
+          onClick={()=>toggleStatPopup('discharge',dischargeRef)} active={statPopup?.key==='discharge'} btnRef={dischargeRef} />
+        <DashTile icon="☣" value={isolation}   label="Isolation" color={isolation>0 ? '#fb923c' : '#fff'} accentColor={isolation>0 ? '#fb923c' : undefined}
+          onClick={()=>toggleStatPopup('isolation',isolationRef)} active={statPopup?.key==='isolation'} btnRef={isolationRef} />
+        <DashTile icon="💧" value={foley}       label="Foley"     color={foley>0 ? '#a78bfa' : '#fff'} accentColor={foley>0 ? '#a78bfa' : undefined}
+          onClick={()=>toggleStatPopup('foley',foleyRef)} active={statPopup?.key==='foley'} btnRef={foleyRef} />
+        <DashTile icon="⊕" value={centralLine} label="CVL"       color={centralLine>0 ? '#93c5fd' : '#fff'} accentColor={centralLine>0 ? '#93c5fd' : undefined}
+          onClick={()=>toggleStatPopup('centralLine',centralLineRef)} active={statPopup?.key==='centralLine'} btnRef={centralLineRef} />
+      </div>
+
+      {/* Stat room popups */}
+      {statPopup?.key==='sitter' && (
+        <StatRoomPopup title="Sitter Rooms" icon="👁" color="#5b21b6"
+          rooms={sitterRooms} allRooms={{}} nurseRooms={nurseRooms} nurses={nurses}
+          anchor={statPopup.anchor} onClose={()=>setStatPopup(null)} />
+      )}
+      {statPopup?.key==='discharge' && (
+        <StatRoomPopup title="Discharge Rooms" icon="🚪" color="#0369a1"
+          rooms={dischargeRooms} allRooms={{}} nurseRooms={nurseRooms} nurses={nurses}
+          anchor={statPopup.anchor} onClose={()=>setStatPopup(null)} />
+      )}
+      {statPopup?.key==='isolation' && (
+        <StatRoomPopup title="Isolation Rooms" icon="☣" color="#c2410c"
+          rooms={isolationRooms} allRooms={{}} nurseRooms={nurseRooms} nurses={nurses}
+          anchor={statPopup.anchor} onClose={()=>setStatPopup(null)} />
+      )}
+      {statPopup?.key==='foley' && (
+        <StatRoomPopup title="Foley Catheter Rooms" icon="💧" color="#7c3aed"
+          rooms={foleyRooms} allRooms={{}} nurseRooms={nurseRooms} nurses={nurses}
+          anchor={statPopup.anchor} onClose={()=>setStatPopup(null)} />
+      )}
+      {statPopup?.key==='centralLine' && (
+        <StatRoomPopup title="Central Line Rooms" icon="🩺" color="#1e3a5f"
+          rooms={centralLineRooms} allRooms={{}} nurseRooms={nurseRooms} nurses={nurses}
+          anchor={statPopup.anchor} onClose={()=>setStatPopup(null)} />
+      )}
+
+      {/* Zap Assign button */}
+      <div style={{ marginTop:18, paddingBottom:6 }}>
+        <button
+          className={`zap-btn${pressed || zapLoading ? ' zap-pressed' : ''}`}
+          onClick={handleZap}
+          disabled={zapLoading}
+          title="AI auto-assign unassigned rooms to nurses"
+          style={{ position:'relative' }}
+        >
+          <ZapAIIcon spinning={zapLoading} />
+          <span>{zapLoading ? 'Assigning…' : 'Zap Assign'}</span>
+          {!zapLoading && (
+            <span style={{ fontSize:10, fontWeight:600, opacity:0.7, marginLeft:2 }}>AI</span>
+          )}
+          {/* Tuning indicator dot — lit when model weights have drifted from baseline */}
+          {isTuned && !zapLoading && (
+            <span title="Model tuned by your feedback" style={{
+              position:'absolute', top:6, right:8,
+              width:7, height:7, borderRadius:'50%',
+              background:'#86efac',
+              boxShadow:'0 0 6px #86efac',
+            }}/>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── CORRIDOR GRID ─────────────────────────────────────────────────────────────
+function CorridorGrid({ allRooms, selected, nurses, nurseRooms, dragPreviewIds, onSelect, onDragStart, onDblClick, onAssignNurse, onUnassign, onClearSelection,
+                        dashStats, onUnassignedClick, unassignedOpen, unassignedBtnRef,
+                        onZapAssign, zapLoading, fuelMode, onToggleFuel, fbWeights }) {
+  const ref = useRef();
+  const [dims, setDims] = useState({ w:900, h:580 });
+
+  useEffect(()=>{
+    const obs = new ResizeObserver(entries=>{
+      const {width,height} = entries[0].contentRect;
+      setDims({ w:width, h:height });
+    });
+    if(ref.current) obs.observe(ref.current);
+    return ()=>obs.disconnect();
+  },[]);
+
+  const { w, h } = dims;
+  const { positions, cw, ch } = getCorridorLayout(w, h);
+
+  const nurseColorMap = {};
+  nurses.forEach(n=>(nurseRooms[n.id]||[]).forEach(id=>{ nurseColorMap[id]=n.color; }));
+
+  const PAD=12;
+  const rx=PAD, ry=PAD, rw=w-2*PAD-cw, rh=h-2*PAD-ch;
+
+  // Build A/B pair groups for background highlight
+  const pairGroups = [];
+  ROOM_IDS.forEach((id, i) => {
+    if (!id.endsWith('A')) return;
+    const bId = id.slice(0,-1) + 'B';
+    const bIdx = ROOM_IDS.indexOf(bId);
+    if (bIdx < 0) return;
+    const aPos = positions[i], bPos = positions[bIdx];
+    pairGroups.push({ key: id, aPos, bPos });
+  });
+
+  return (
+    <div ref={ref} className="corridor-container">
+      <div style={{ position:'absolute', inset:0, zIndex:0 }} onClick={onClearSelection}/>
+      <svg style={{ position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none' }}>
+        <rect x={rx+cw/2} y={ry+ch/2} width={rw} height={rh} rx={18} ry={18} className="corridor-path"/>
+      </svg>
+
+      {/* A/B pair grouping backgrounds */}
+      {pairGroups.map(({ key, aPos, bPos }) => {
+        const INSET = 3;
+        const x1 = Math.min(aPos.x, bPos.x) - INSET;
+        const y1 = Math.min(aPos.y, bPos.y) - INSET;
+        const x2 = Math.max(aPos.x, bPos.x) + cw + INSET;
+        const y2 = Math.max(aPos.y, bPos.y) + ch + INSET;
+        return (
+          <div key={key+'-grp'} style={{
+            position:'absolute', left:x1, top:y1, width:x2-x1, height:y2-y1,
+            borderRadius:11, zIndex:0, pointerEvents:'none',
+            border:'1.5px solid rgba(139,92,246,0.32)',
+            background:'rgba(139,92,246,0.07)',
+          }}/>
+        );
+      })}
+
+      {/* Center dashboard */}
+      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto' }}>
+          <CenterDashboard
+            vacant={dashStats.vacant}    occupied={dashStats.occupied}
+            assigned={dashStats.assigned} unassigned={dashStats.unassigned}
+            tele={dashStats.tele}        sitter={dashStats.sitter}
+            discharge={dashStats.discharge} isolation={dashStats.isolation}
+            restraint={dashStats.restraint} centralLine={dashStats.centralLine}
+            foley={dashStats.foley}
+            sitterRooms={dashStats.sitterRooms}
+            dischargeRooms={dashStats.dischargeRooms}
+            isolationRooms={dashStats.isolationRooms}
+            centralLineRooms={dashStats.centralLineRooms}
+            foleyRooms={dashStats.foleyRooms}
+            nurses={nurses}
+            nurseRooms={nurseRooms}
+            unassignedOpen={unassignedOpen}
+            onUnassignedClick={onUnassignedClick}
+            unassignedBtnRef={unassignedBtnRef}
+            onZapAssign={onZapAssign}
+            zapLoading={zapLoading}
+            fuelMode={fuelMode}
+            onToggleFuel={onToggleFuel}
+            fbWeights={fbWeights}
+          />
+        </div>
+      </div>
+
+      {ROOM_IDS.map((id,i)=>{
+        const room = {...allRooms[id], _nurseColor: nurseColorMap[id]};
+        return (
+          <RoomCard key={id} room={room} pos={positions[i]} cw={cw} ch={ch}
+            selected={selected.has(id)}
+            nurses={nurses}
+            nurseRooms={nurseRooms}
+            onSelect={e=>onSelect(id,e)}
+            onDragStart={e=>onDragStart(id,e)}
+            onDblClick={()=>onDblClick(id)}
+            onAssignNurse={nid=>onAssignNurse(id,nid)}
+            onUnassign={()=>onUnassign(id)}
+          />
+        );
+      })}
+
+      <div style={{ position:'absolute', bottom:8, right:12, fontSize:9, color:'var(--text-5)' }}>
+        Double-click to edit · Click to select · Drag to nurse · hover + to assign
+      </div>
+    </div>
+  );
+}
+
+// ── THEME TOGGLE ──────────────────────────────────────────────────────────────
+function ThemeToggle({ theme, onToggle }) {
+  const isDay = theme === 'day';
+  return (
+    <button className="theme-btn" onClick={onToggle} title={isDay ? 'Switch to Night mode' : 'Switch to Day mode'}>
+      <div className="theme-btn-knob">{isDay ? '☀' : '🌙'}</div>
+    </button>
+  );
+}
+
+// ── PHONE DIRECTORY MODAL ─────────────────────────────────────────────────────
+const PD_TABS = [
+  { key:'internal',   label:'📋 Internal',      cols:['dept','phone','ext','notes'],         headers:['Department / Person','Direct Phone #','Extension','Notes'] },
+  { key:'external',   label:'🌐 External',       cols:['name','phone','notes'],               headers:['Name / Service','Phone Number','Notes'] },
+  { key:'quickNotes', label:'📌 Quick Notes',    cols:['note','detail'],                      headers:['Note','Detail'] },
+];
+
+function PhoneDirectory({ onClose }) {
+  const [data,     setData]    = React.useState(() => loadPhoneDir());
+  const [tab,      setTab]     = React.useState('internal');
+  const [search,   setSearch]  = React.useState('');
+  const [editing,  setEditing] = React.useState(null); // {id, col}
+  const [editVal,  setEditVal] = React.useState('');
+  const inputRef = React.useRef();
+
+  React.useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  const tabDef = PD_TABS.find(t => t.key === tab);
+  const rows   = data[tab] || [];
+  const q      = search.toLowerCase();
+  const visible = q
+    ? rows.filter(r => tabDef.cols.some(c => (r[c]||'').toLowerCase().includes(q)))
+    : rows;
+
+  function persist(next) { setData(next); savePhoneDir(next); }
+
+  function startEdit(id, col, val) { setEditing({id,col}); setEditVal(val||''); }
+  function commitEdit() {
+    if (!editing) return;
+    persist({ ...data, [tab]: data[tab].map(r => r.id===editing.id ? {...r,[editing.col]:editVal} : r) });
+    setEditing(null);
+  }
+
+  function addRow() {
+    const blank = Object.fromEntries([['id',pdId()], ...tabDef.cols.map(c=>[c,''])]);
+    const next = { ...data, [tab]: [...data[tab], blank] };
+    persist(next);
+    // auto-edit first col of new row
+    setEditing({ id: blank.id, col: tabDef.cols[0] }); setEditVal('');
+  }
+  function deleteRow(id) { persist({ ...data, [tab]: data[tab].filter(r => r.id !== id) }); }
+
+  function resetToSeed() {
+    if (!window.confirm('Reset this tab to the original directory data?')) return;
+    persist({ ...data, [tab]: PHONE_DIR_SEED[tab] });
+  }
+
+  const cellStyle = { padding:'6px 10px', borderBottom:'1px solid var(--border-sub)', fontSize:12, color:'var(--text-1)', verticalAlign:'middle' };
+  const hdrStyle  = { padding:'7px 10px', fontWeight:700, fontSize:11, textTransform:'uppercase', letterSpacing:'0.06em',
+                      color:'var(--text-3)', borderBottom:'2px solid var(--border)', background:'var(--bg-panel)', position:'sticky', top:0, zIndex:2 };
+
+  return ReactDOM.createPortal(
+    <div style={{ position:'fixed', inset:0, zIndex:900, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)' }}
+         onMouseDown={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={{ width:'min(860px,96vw)', height:'min(680px,92vh)', background:'var(--modal-bg)', borderRadius:18,
+                    display:'flex', flexDirection:'column', boxShadow:'0 24px 72px rgba(0,0,0,0.55)', overflow:'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding:'14px 18px 0', background:'var(--bg-panel)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <span style={{ fontSize:20 }}>📞</span>
+            <span style={{ fontWeight:800, fontSize:16, color:'var(--text-1)', flex:1 }}>Hospital Phone Directory</span>
+            {/* Search */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg-base)', border:'1px solid var(--border-sub)', borderRadius:8, padding:'4px 10px' }}>
+              <span style={{ opacity:0.45, fontSize:13 }}>🔍</span>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…"
+                style={{ border:'none', background:'transparent', fontSize:12, color:'var(--text-1)', width:160, outline:'none' }}/>
+              {search && <button onClick={()=>setSearch('')} style={{ border:'none',background:'transparent',cursor:'pointer',color:'var(--text-4)',fontSize:12 }}>✕</button>}
+            </div>
+            <button onClick={onClose} style={{ background:'transparent',border:'none',fontSize:18,cursor:'pointer',color:'var(--text-3)',lineHeight:1,padding:'2px 4px' }}>✕</button>
+          </div>
+          {/* Tabs */}
+          <div style={{ display:'flex', gap:2 }}>
+            {PD_TABS.map(t=>(
+              <button key={t.key} onClick={()=>{ setTab(t.key); setSearch(''); setEditing(null); }}
+                style={{ padding:'7px 14px', border:'none', borderRadius:'8px 8px 0 0', cursor:'pointer', fontSize:12, fontWeight:tab===t.key?700:500,
+                  background: tab===t.key ? 'var(--modal-bg)' : 'transparent',
+                  color: tab===t.key ? 'var(--text-1)' : 'var(--text-3)',
+                  borderBottom: tab===t.key ? '2px solid var(--accent)' : '2px solid transparent',
+                }}>
+                {t.label} <span style={{ fontSize:10, opacity:0.6 }}>({data[t.key]?.length||0})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{ flex:1, overflowY:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                {tabDef.headers.map((h,i)=><th key={i} style={hdrStyle}>{h}</th>)}
+                <th style={{...hdrStyle, width:36}}/>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.length === 0 && (
+                <tr><td colSpan={tabDef.cols.length+1} style={{ textAlign:'center', padding:32, color:'var(--text-4)', fontSize:13 }}>
+                  {search ? 'No matches' : 'No entries yet'}
+                </td></tr>
+              )}
+              {visible.map(row=>(
+                <tr key={row.id} style={{ transition:'background 0.1s' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--bg-panel)'}
+                  onMouseLeave={e=>e.currentTarget.style.background=''}>
+                  {tabDef.cols.map(col=>(
+                    <td key={col} style={cellStyle} onClick={()=>startEdit(row.id,col,row[col])}>
+                      {editing?.id===row.id && editing?.col===col
+                        ? <input ref={inputRef} value={editVal} onChange={e=>setEditVal(e.target.value)}
+                            onBlur={commitEdit}
+                            onKeyDown={e=>{ if(e.key==='Enter') commitEdit(); if(e.key==='Escape'){setEditing(null);} }}
+                            style={{ width:'100%', border:'1px solid var(--accent)', borderRadius:4, padding:'2px 6px', fontSize:12,
+                              background:'var(--bg-base)', color:'var(--text-1)', outline:'none' }}/>
+                        : <span style={{ display:'block', minHeight:18, cursor:'text',
+                            color: row[col] ? 'var(--text-1)' : 'var(--text-4)',
+                            fontFamily: (col==='ext'||col==='phone'||col==='detail') ? 'monospace' : 'inherit',
+                          }}>{row[col] || (editing ? '' : '—')}</span>
+                      }
+                    </td>
+                  ))}
+                  <td style={{...cellStyle, textAlign:'center', padding:'4px 6px'}}>
+                    <button onClick={()=>deleteRow(row.id)} title="Delete row"
+                      style={{ background:'transparent',border:'none',cursor:'pointer',color:'var(--text-4)',fontSize:13,lineHeight:1,
+                        padding:'2px 4px', borderRadius:4, transition:'color 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
+                      onMouseLeave={e=>e.currentTarget.style.color=''}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'10px 16px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', background:'var(--bg-panel)', flexShrink:0 }}>
+          <button onClick={addRow} style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',
+            background:'var(--accent)',color:'#fff',fontWeight:700,fontSize:12 }}>
+            + Add Row
+          </button>
+          <span style={{ flex:1, fontSize:11, color:'var(--text-4)' }}>Click any cell to edit · Changes auto-save</span>
+          <button onClick={resetToSeed} style={{ padding:'5px 12px',borderRadius:8,border:'1px solid var(--border-sub)',cursor:'pointer',
+            background:'transparent',color:'var(--text-3)',fontSize:11 }}>↺ Reset tab</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const _saved = useMemo(loadFromStorage, []);
+  const [rooms, setRooms] = useState(()=>mergeRooms(_saved?.rooms));
+  const [nurses, setNurses] = useState(()=>_saved?.nurses || DEFAULT_NURSES);
+  const [lastSaved, setLastSaved] = useState(()=>_saved?.savedAt || null);
+  const [selected, setSelected] = useState(new Set());
+  const [lockedNurses, setLockedNurses] = useState(new Set()); // nurse IDs whose assignments are protected from Zap reset
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [newNurseName, setNewNurseName] = useState('');
+  const [dragRoomIds, setDragRoomIds] = useState([]);
+  const [pendingAssignment, setPendingAssignment] = useState(null);
+  const [theme, setTheme] = useState(()=>localStorage.getItem('careflow_theme')||'night');
+  const [zapLoading, setZapLoading] = useState(false);
+  const [phoneDir,   setPhoneDir]   = useState(false);
+  const [fuelMode, setFuelMode] = useState(false);
+  const [feedbackStore, setFeedbackStore] = useState(() => loadFB());
+  const [zapFeedbackNurses, setZapFeedbackNurses] = useState(new Set()); // Set of nurseIds awaiting per-nurse feedback
+  const toastRef = useRef();
+  const autoSaveRef = useRef();
+  const colorIdx = useRef(_saved?.nurses?.length ?? DEFAULT_NURSES.length);
+
+  // ── Feedback handlers (per-nurse) ─────────────────────────────────────────
+  function handleFeedbackGood(nurseId) {
+    setFeedbackStore(prev => {
+      const weights = { ...prev.weights };
+      // Nudge every weight 8% back toward 1.0 (baseline relaxation)
+      Object.keys(weights).forEach(k => { weights[k] = +(weights[k] * 0.92 + 1.0 * 0.08).toFixed(3); });
+      const entry = { ts: Date.now(), rating:'good', nurseId, reason:null };
+      const next = { entries:[...prev.entries.slice(-99), entry], weights };
+      saveFB(next); return next;
+    });
+    setZapFeedbackNurses(prev => { const s = new Set(prev); s.delete(nurseId); return s; });
+  }
+  function handleFeedbackBad(nurseId, reason) {
+    setFeedbackStore(prev => {
+      const weights = { ...prev.weights };
+      const BOOST = 1.28, CAP = 4.0;
+      if (reason === 'spread')   weights.diam        = +Math.min(weights.diam        * BOOST, CAP).toFixed(3);
+      if (reason === 'load')     weights.load        = +Math.min(weights.load        * BOOST, CAP).toFixed(3);
+      if (reason === 'heavy')    weights.acuity      = +Math.min(weights.acuity      * BOOST, CAP).toFixed(3);
+      if (reason === 'mix')      weights.teleCluster = +Math.min(weights.teleCluster * BOOST, CAP).toFixed(3);
+      if (reason === 'cluster')  weights.diam        = +Math.min(weights.diam        * BOOST * BOOST, CAP).toFixed(3);
+      const entry = { ts: Date.now(), rating:'bad', nurseId, reason };
+      const next = { entries:[...prev.entries.slice(-99), entry], weights };
+      saveFB(next); return next;
+    });
+    setZapFeedbackNurses(prev => { const s = new Set(prev); s.delete(nurseId); return s; });
+  }
+
+  // Apply theme to body
+  useEffect(()=>{
+    document.body.dataset.theme = theme;
+    localStorage.setItem('careflow_theme', theme);
+  }, [theme]);
+
+  // Auto-save
+  useEffect(()=>{
+    clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(()=>{
+      const savedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ rooms, nurses, savedAt }));
+      setLastSaved(savedAt);
+    }, 800);
+    return ()=>clearTimeout(autoSaveRef.current);
+  }, [rooms, nurses]);
+
+  function showToast(msg) {
+    setToast(msg);
+    clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(()=>setToast(null), 3200);
+  }
+
+  const nurseRooms = useMemo(()=>{
+    const map = {};
+    nurses.forEach(n=>{ map[n.id]=[]; });
+    Object.values(rooms).forEach(r=>{
+      if(r.nurseId && map[r.nurseId]) map[r.nurseId].push(r.id);
+    });
+    return map;
+  }, [rooms, nurses]);
+
+  function selectRoom(id, e) {
+    if(!rooms[id].occupied) return;
+    e.stopPropagation();
+    setSelected(prev=>{
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  useEffect(()=>{
+    const h = e => { if(e.key==='Escape') setSelected(new Set()); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+
+  function handleRoomDragStart(id, e) {
+    const ids = selected.has(id) ? [...selected] : [id];
+    e.dataTransfer.setData('roomIds', JSON.stringify(ids));
+    e.dataTransfer.effectAllowed = 'move';
+    setDragRoomIds(ids);
+  }
+
+  function commitAssign(nurseId, roomIds) {
+    setRooms(prev=>{ const n={...prev}; roomIds.forEach(id=>{n[id]={...n[id],nurseId};}); return n; });
+    setSelected(new Set());
+    setDragRoomIds([]);
+    setPendingAssignment(null);
+  }
+
+  function tryAssign(nurseId, roomIds) {
+    const cand = [...new Set([...(nurseRooms[nurseId]||[]),...roomIds])];
+    const err = checkAssignment(nurseId, cand, rooms);
+    if(err) {
+      setPendingAssignment({ warning: err, onConfirm: ()=>commitAssign(nurseId, roomIds) });
+    } else {
+      commitAssign(nurseId, roomIds);
+    }
+  }
+
+  function handleDropOnNurse(nurseId, e, toTrash) {
+    const badgeRoomId = e.dataTransfer.getData('badgeRoomId');
+    const fromNurseId = e.dataTransfer.getData('fromNurseId');
+
+    if(toTrash && badgeRoomId) {
+      setRooms(prev=>({...prev,[badgeRoomId]:{...prev[badgeRoomId],nurseId:null}}));
+      return;
+    }
+    if(toTrash) return;
+
+    if(badgeRoomId && fromNurseId) {
+      if(fromNurseId===nurseId) return;
+      tryAssign(nurseId, [badgeRoomId]);
+      return;
+    }
+
+    const rawIds = e.dataTransfer.getData('roomIds');
+    if(!rawIds) return;
+    const ids = JSON.parse(rawIds);
+    const conflicts = [], toAssign = [];
+    for(const id of ids) {
+      const room = rooms[id];
+      if(!room.occupied) continue;
+      if(room.nurseId && room.nurseId!==nurseId) {
+        conflicts.push(`Room ${id} already assigned to ${nurses.find(n=>n.id===room.nurseId)?.name||'another nurse'}`);
+        continue;
+      }
+      toAssign.push(id);
+    }
+    if(conflicts.length) showToast('⚠ '+conflicts.join(' · '));
+    if(!toAssign.length) return;
+    tryAssign(nurseId, toAssign);
+  }
+
+  function assignRoomToNurse(roomId, nurseId) {
+    const room = rooms[roomId];
+    if(!room.occupied) return;
+    if(room.nurseId && room.nurseId!==nurseId) {
+      showToast(`⚠ Room ${roomId} already assigned to ${nurses.find(n=>n.id===room.nurseId)?.name}`);
+      return;
+    }
+    tryAssign(nurseId, [roomId]);
+  }
+
+  function unassignRoom(roomId) {
+    setRooms(prev=>({...prev,[roomId]:{...prev[roomId],nurseId:null}}));
+  }
+
+  // ── AI Zap Assign ─────────────────────────────────────────────────────────
+  function zapAssign() {
+    if (!nurses.length) { showToast('⚠ Add nurses before Zap Assign'); return; }
+
+    setZapLoading(true);
+
+    // Small delay so the spin animation is visible
+    setTimeout(() => {
+      try {
+        const N = nurses.length;
+
+        // ── Snapshot rooms at the moment Zap is pressed ──────────────────
+        // Rooms belonging to LOCKED nurses are preserved; all others are
+        // cleared back to unassigned so the AI gets a clean slate.
+        const lockedRoomIds = new Set();
+        nurses.forEach(n => {
+          if (lockedNurses.has(n.id)) {
+            (nurseRooms[n.id] || []).forEach(id => {
+              if (rooms[id]?.occupied) lockedRoomIds.add(id);
+            });
+          }
+        });
+
+        // Reset: strip nurseId from every occupied room NOT protected by a lock
+        const resetRooms = { ...rooms };
+        Object.values(resetRooms).forEach(r => {
+          if (r.occupied && !lockedRoomIds.has(r.id)) {
+            resetRooms[r.id] = { ...r, nurseId: null };
+          }
+        });
+
+        // Sync UI immediately so the list view reflects the reset
+        setRooms(resetRooms);
+
+        // ── Acuity point value per room ──────────────────────────────────
+        function roomAcuityPts(r) {
+          return (r.highAcuity ? 2 : 0) + (r.isolation ? 2 : 0) + (r.totalCare ? 2 : 0);
+        }
+
+        // Nurse state: locked nurses seed with their preserved rooms;
+        // unlocked nurses start empty.
+        const shuffledNurses = [...nurses].sort(() => Math.random() - 0.5);
+        const ns = {};
+        shuffledNurses.forEach(n => {
+          const isLocked = lockedNurses.has(n.id);
+          const existing = isLocked
+            ? (nurseRooms[n.id] || []).filter(id => resetRooms[id]?.occupied)
+            : [];
+          ns[n.id] = {
+            nurse: n,
+            rooms:          [...existing],
+            teleCount:      existing.filter(id => resetRooms[id]?.type === 'TELE').length,
+            medCount:       existing.filter(id => resetRooms[id]?.type !== 'TELE').length,
+            haCount:        existing.filter(id => resetRooms[id]?.highAcuity).length,
+            acuityPts:      existing.reduce((s, id) => s + roomAcuityPts(resetRooms[id] || {}), 0),
+            isolationCount: existing.filter(id => resetRooms[id]?.isolation).length,
+            totalCareCount: existing.filter(id => resetRooms[id]?.totalCare).length,
+            glucoseCount:   existing.filter(id => resetRooms[id]?.glucose).length,
+            dripCount:      existing.filter(id => resetRooms[id]?.drip).length,
+          };
+        });
+
+        // Snapshot learned weights from feedback store
+        const fbW = feedbackStore.weights;
+
+        // All occupied rooms that are NOT locked get re-assigned
+        const unassigned = Object.values(resetRooms).filter(r => r.occupied && !lockedRoomIds.has(r.id));
+
+        // Sort rooms: heaviest acuity first — ECO mode manages its own ordering internally
+        const toAssign = [...unassigned].sort((a, b) => {
+          const wa = (a.isolation?4:0)+(a.highAcuity?3:0)+(a.totalCare?2:0)+(a.type==='TELE'?1:0);
+          const wb = (b.isolation?4:0)+(b.highAcuity?3:0)+(b.totalCare?2:0)+(b.type==='TELE'?1:0);
+          if (wa !== wb) return wb - wa;
+          return Math.random() - 0.5;
+        });
+
+        // ── Proximity: diameter = max circDist between ANY two rooms ────────
+        // This checks EVERY pair, not just consecutive sorted neighbors.
+        // Example: {1116(17),1120(21),1124(25),1126(27)} looks fine by
+        // consecutive gaps [4,4,2] but has diameter circDist(1116,1126)=10 — not ideal.
+        // Example: {1105(4),1106(5),1111B(12),1123(24)} tight core at 1105/1106,
+        // diameter circDist(1105,1123)=20 — heavy penalty but acuity may justify it.
+        function clusterDiameter(roomIds) {
+          if (roomIds.length <= 1) return 0;
+          let maxD = 0;
+          for (let i = 0; i < roomIds.length; i++)
+            for (let j = i + 1; j < roomIds.length; j++) {
+              const d = circDist(roomIds[i], roomIds[j]);
+              if (d > maxD) maxD = d;
+            }
+          return maxD;
+        }
+
+        // Also: chain-gap = max consecutive step in sorted circular cluster.
+        // Used as a secondary tiebreaker below diameter.
+        function maxChainGap(roomIds) {
+          if (roomIds.length <= 1) return 0;
+          const N    = ROOM_IDS.length;
+          const idxs = roomIds.map(id => _RIDX[id]).sort((a, b) => a - b);
+          const gaps = [];
+          for (let i = 0; i < idxs.length - 1; i++) gaps.push(idxs[i+1] - idxs[i]);
+          gaps.push(N - idxs[idxs.length-1] + idxs[0]);
+          const maxGapIdx = gaps.reduce((mi, g, i) => g > gaps[mi] ? i : mi, 0);
+          const inner = gaps.filter((_, i) => i !== maxGapIdx);
+          return inner.length === 0 ? 0 : Math.max(...inner);
+        }
+
+        // Diameter penalty table (index = circDist steps between farthest pair)
+        //   0-5  : ideal — all rooms within a tight corridor pocket
+        //   6-9  : soft stretch — acceptable when acuity forces it
+        //   10-13: significant spread — "1116 too far from 1126" territory
+        //   14+  : hard block — nurse would be covering too large a territory
+        const DIAM_PEN = [
+          0,  0,  0,  0,  0,  0,  //  0-5  ideal
+         20, 45, 80,125,            //  6-9  soft stretch
+        180,250,340,450,            // 10-13 significant
+        ];
+        const DIAM_HARD = 14; // diameter > 13 → Infinity
+
+        // Chain-gap secondary penalty (used alongside diameter)
+        const CHAIN_PEN = [0, 0, 0, 0, 0, 0, 15, 35, 65, 105, 155, 210, 275, 350];
+
+        // Score a nurse for a candidate room (lower = better fit, Infinity = blocked)
+        function score(state, room) {
+          const { rooms: nRooms, teleCount, medCount, haCount,
+                  acuityPts, isolationCount, totalCareCount, glucoseCount } = state;
+
+          // ── Hard limits ──────────────────────────────────────────────────
+          const capTele = teleCount > 0 || room.type === 'TELE';
+          const cap     = capTele ? 4 : 5;
+          if (nRooms.length + 1 > cap)               return Infinity;
+          if (room.type === 'TELE' && teleCount >= 4) return Infinity;
+          if (room.highAcuity     && haCount >= 2)    return Infinity;
+          if (acuityPts + roomAcuityPts(room) > 6)   return Infinity;
+          if (room.glucose    && glucoseCount >= 2)   return Infinity;
+          if (room.totalCare  && totalCareCount >= 2) return Infinity;
+
+          // ── Proximity hard limit: diameter > 13 → blocked ────────────────
+          const projRooms = [...nRooms, room.id];
+          const diam = clusterDiameter(projRooms);
+          if (diam >= DIAM_HARD) return Infinity;
+
+          // ── Soft penalties ───────────────────────────────────────────────
+          let penalty = 0;
+          const projAcuity = acuityPts + roomAcuityPts(room);
+
+          // Primary: penalise large diameter — scaled by learned weight
+          penalty += (diam < DIAM_PEN.length ? DIAM_PEN[diam] : 450 + (diam - 13) * 80) * fbW.diam;
+
+          // Secondary: penalise large consecutive steps in the sorted cluster
+          const gap = maxChainGap(projRooms);
+          penalty += gap < CHAIN_PEN.length ? CHAIN_PEN[gap] : 350 + (gap - 13) * 60;
+
+          // Cohesion nudge: prefer rooms near the existing cluster centroid
+          if (nRooms.length > 0) {
+            const minDist = Math.min(...nRooms.map(id => circDist(room.id, id)));
+            penalty += minDist * 2.5;
+          }
+
+          // Soft acuity cap — scaled by learned weight
+          if (projAcuity > 4) penalty += 60 * (projAcuity - 4) * fbW.acuity;
+
+          // Isolation: strongly discourage a 2nd isolation room on same nurse
+          if (room.isolation && isolationCount >= 1) penalty += 90;
+
+          // If nurse already has isolation, discourage stacking totalCare
+          if (isolationCount >= 1 && room.totalCare && totalCareCount >= 1) penalty += 70;
+          if (room.isolation && totalCareCount >= 2) penalty += 70;
+
+          // ── ECO overflow: soft type-mix discouragement ───────────────────
+          // (main ECO assignment is handled by buildEcoClusters; score() is
+          //  only called for rooms that overflow the dedicated-type nurses)
+          if (fuelMode) {
+            if (teleCount > 0 && room.type !== 'TELE') penalty += 80 * fbW.teleCluster;
+            if (medCount  > 0 && room.type === 'TELE') penalty += 80 * fbW.teleCluster;
+          }
+
+          // ── Load balance — scaled by learned weight ───────────────────────
+          const load = nRooms.length * 5 * fbW.load;
+
+          // ── HA spread: discourage stacking high-acuity ───────────────────
+          const haSpread = room.highAcuity ? haCount * 18 : 0;
+
+          // ── Tele mix (normal mode) ────────────────────────────────────────
+          const telePenalty = (!fuelMode && room.type === 'TELE' && teleCount >= 3) ? 15 : 0;
+
+          // ── Random noise (different result each press) ────────────────────
+          const noise = (Math.random() - 0.5) * 10;
+
+          return load + haSpread + telePenalty + penalty + noise;
+        }
+
+        // ── Helper: apply a room assignment to a nurse state ────────────────
+        function commitToState(state, room) {
+          state.rooms.push(room.id);
+          if (room.type === 'TELE') state.teleCount++; else state.medCount++;
+          if (room.highAcuity)     state.haCount++;
+          state.acuityPts      += roomAcuityPts(room);
+          if (room.isolation)  state.isolationCount++;
+          if (room.totalCare)  state.totalCareCount++;
+          if (room.glucose)    state.glucoseCount++;
+          if (room.drip)       state.dripCount++;
+        }
+
+        // ── ECO shared helpers ───────────────────────────────────────────────
+        // Hard acuity / stacking limits — same rules used everywhere.
+        function _ecoPasses(state, r) {
+          if (r.highAcuity && state.haCount >= 2)        return false;
+          if (state.acuityPts + roomAcuityPts(r) > 6)    return false;
+          if (r.glucose    && state.glucoseCount    >= 2) return false;
+          if (r.totalCare  && state.totalCareCount  >= 2) return false;
+          if (r.drip       && state.dripCount       >= 2) return false;
+          if (r.isolation  && state.isolationCount  >= 2) return false;
+          return true;
+        }
+        // Proximity + acuity score for one candidate room (lower = better).
+        // Returns Infinity if the projected cluster exceeds DIAM_HARD.
+        function _ecoScore(state, r, projRooms) {
+          const diam = clusterDiameter(projRooms);
+          if (diam >= DIAM_HARD) return Infinity;
+          let s = (diam < DIAM_PEN.length ? DIAM_PEN[diam] : 450+(diam-13)*80) * fbW.diam;
+          if (state.rooms.length > 0)
+            s += Math.min(...state.rooms.map(id => circDist(r.id, id))) * 20;
+          s -= roomAcuityPts(r) * 14 * fbW.acuity;
+          if (r.isolation && state.isolationCount >= 1)                              s += 90;
+          if (state.isolationCount >= 1 && r.totalCare && state.totalCareCount >= 1) s += 70;
+          if (r.isolation && state.totalCareCount >= 2)                              s += 70;
+          s += (Math.random() - 0.5) * 6;
+          return s;
+        }
+
+        // ── Step 2: MedSurg cluster builder (cap = 5) ───────────────────────
+        // For each nurse:
+        //   a) Seed with the heaviest-acuity valid room from their corridor section
+        //   b) Greedily fill to 5 (proximity + acuity — no round-robin)
+        // Returns { assigned:{roomId→nurseId}, overflow:[rooms not placed] }
+        function buildMedClusters(medPool, medNurses) {
+          if (medNurses.length === 0) return { assigned: {}, overflow: [...medPool] };
+          const CAP       = 5;
+          const remaining = [...medPool];
+          const assigned  = {};
+
+          const byCorr = [...remaining].sort((a, b) => _RIDX[a.id] - _RIDX[b.id]);
+          const stride  = Math.ceil(byCorr.length / medNurses.length);
+
+          for (let ni = 0; ni < medNurses.length; ni++) {
+            const n = medNurses[ni], state = ns[n.id];
+
+            // (a) Seed: heaviest valid room in this nurse's spatial section
+            const section      = byCorr.slice(ni * stride, ni * stride + stride);
+            const sectionAvail = section
+              .filter(r => remaining.some(rem => rem.id === r.id) && _ecoPasses(state, r))
+              .sort((a, b) => roomAcuityPts(b) - roomAcuityPts(a));
+
+            if (sectionAvail.length > 0) {
+              const seed = sectionAvail[Math.floor(Math.random() * Math.min(2, sectionAvail.length))];
+              const idx  = remaining.findIndex(r => r.id === seed.id);
+              if (idx !== -1) {
+                remaining.splice(idx, 1);
+                assigned[seed.id] = n.id;
+                commitToState(state, seed);
+              }
+            }
+
+            // (b) Greedy fill to cap
+            while (state.rooms.length < CAP && remaining.length > 0) {
+              let bestIdx = -1, bestScore = Infinity;
+              for (let i = 0; i < remaining.length; i++) {
+                const r = remaining[i];
+                if (!_ecoPasses(state, r)) continue;
+                const s = _ecoScore(state, r, [...state.rooms, r.id]);
+                if (s < bestScore) { bestScore = s; bestIdx = i; }
+              }
+              if (bestIdx === -1) break;
+              const room = remaining[bestIdx];
+              remaining.splice(bestIdx, 1);
+              assigned[room.id] = n.id;
+              commitToState(state, room);
+            }
+          }
+
+          return { assigned, overflow: remaining };
+        }
+
+        // ── Step 3: TELE cluster builder (cap = 4, MedSurg mixing allowed) ──
+        // medOverflow = leftover MedSurg rooms injected after Step 2.
+        // For each nurse:
+        //   a) Seed with a TELE room from their TELE corridor section
+        //      (fallback to any available TELE if section empty)
+        //   b) Greedily fill to 4 — MedSurg rooms allowed but soft-penalised
+        // Dynamic cap: TELE involved → 4, pure MedSurg nurse → 5
+        // Returns { assigned:{roomId→nurseId}, overflow:[rooms not placed] }
+        function buildTeleClusters(telePool, medOverflow, teleNurses) {
+          if (teleNurses.length === 0) return { assigned: {}, overflow: [...telePool, ...medOverflow] };
+          const TELE_CAP  = 4;
+          const remaining = [...telePool, ...medOverflow]; // TELE first, then MedSurg
+          const assigned  = {};
+
+          // Section seeding draws only from TELE rooms
+          const teleByCorr = [...telePool].sort((a, b) => _RIDX[a.id] - _RIDX[b.id]);
+          const stride     = Math.max(1, Math.ceil(teleByCorr.length / teleNurses.length));
+
+          for (let ni = 0; ni < teleNurses.length; ni++) {
+            const n = teleNurses[ni], state = ns[n.id];
+
+            // (a) Seed: heaviest valid TELE room in section; fallback to any TELE
+            const section      = teleByCorr.slice(ni * stride, ni * stride + stride);
+            const sectionAvail = section
+              .filter(r => remaining.some(rem => rem.id === r.id) && _ecoPasses(state, r))
+              .sort((a, b) => roomAcuityPts(b) - roomAcuityPts(a));
+            const seedPool = sectionAvail.length > 0 ? sectionAvail :
+              remaining.filter(r => r.type === 'TELE' && _ecoPasses(state, r))
+                       .sort((a, b) => roomAcuityPts(b) - roomAcuityPts(a));
+
+            if (seedPool.length > 0) {
+              const seed = seedPool[Math.floor(Math.random() * Math.min(2, seedPool.length))];
+              const idx  = remaining.findIndex(r => r.id === seed.id);
+              if (idx !== -1) {
+                remaining.splice(idx, 1);
+                assigned[seed.id] = n.id;
+                commitToState(state, seed);
+              }
+            }
+
+            // (b) Greedy fill to TELE cap
+            while (state.rooms.length < TELE_CAP && remaining.length > 0) {
+              let bestIdx = -1, bestScore = Infinity;
+              for (let i = 0; i < remaining.length; i++) {
+                const r = remaining[i];
+                if (!_ecoPasses(state, r)) continue;
+                // Dynamic cap enforced per candidate
+                const effectiveCap = (state.teleCount > 0 || r.type === 'TELE') ? TELE_CAP : 5;
+                if (state.rooms.length >= effectiveCap) continue;
+                let s = _ecoScore(state, r, [...state.rooms, r.id]);
+                if (s === Infinity) continue;
+                // Soft penalty for MedSurg rooms mixed into a TELE nurse's cluster
+                if (r.type !== 'TELE') s += 60 * fbW.teleCluster;
+                if (s < bestScore) { bestScore = s; bestIdx = i; }
+              }
+              if (bestIdx === -1) break;
+              const room = remaining[bestIdx];
+              remaining.splice(bestIdx, 1);
+              assigned[room.id] = n.id;
+              commitToState(state, room);
+            }
+          }
+
+          return { assigned, overflow: remaining };
+        }
+
+        // ── Main assignment ──────────────────────────────────────────────────
+        const newAssignments = {};
+
+        if (fuelMode) {
+          // ECO MODE — 3-step cluster assignment:
+          //   Step 1: pool all MedSurg rooms → dedicate to MedSurg nurses (cap 5)
+          //   Step 2: any leftover MedSurg rooms fold into TELE pool → TELE nurses (cap 4)
+          //   Step 3: anything still unassigned → normal score() greedy across all nurses
+
+          const acuityKey = r => (r.isolation?4:0)+(r.highAcuity?3:0)+(r.totalCare?2:0);
+
+          const telePool = unassigned
+            .filter(r => r.type === 'TELE')
+            .sort((a,b) => acuityKey(b)-acuityKey(a) || _RIDX[a.id]-_RIDX[b.id]);
+          const medPool = unassigned
+            .filter(r => r.type !== 'TELE')
+            .sort((a,b) => acuityKey(b)-acuityKey(a) || _RIDX[a.id]-_RIDX[b.id]);
+
+          const unlockedNurses = shuffledNurses.filter(n => !lockedNurses.has(n.id));
+          const total = telePool.length + medPool.length;
+          const teleNurseCount = total > 0
+            ? Math.min(Math.round(unlockedNurses.length * telePool.length / total), unlockedNurses.length)
+            : 0;
+          const teleNurses = unlockedNurses.slice(0, teleNurseCount);
+          const medNurses  = unlockedNurses.slice(teleNurseCount);
+
+          // Step 1→2: fill MedSurg nurses (cap 5); leftover MedSurg → TELE pool
+          const medResult  = buildMedClusters(medPool, medNurses);
+          Object.assign(newAssignments, medResult.assigned);
+
+          // Step 3: fill TELE nurses (cap 4) with TELE pool + leftover MedSurg
+          const teleResult = buildTeleClusters(telePool, medResult.overflow, teleNurses);
+          Object.assign(newAssignments, teleResult.assigned);
+
+          // Final safety net: anything buildTeleClusters couldn't place → score() greedy
+          for (const room of teleResult.overflow) {
+            let best = null, bestScore = Infinity;
+            for (const state of Object.values(ns)) {
+              const s = score(state, room);
+              if (s < bestScore) { bestScore = s; best = state; }
+            }
+            if (best && bestScore < Infinity) {
+              newAssignments[room.id] = best.nurse.id;
+              commitToState(best, room);
+            }
+          }
+
+        } else {
+          // NORMAL MODE: single proximity + acuity greedy pass
+          for (const room of toAssign) {
+            let best = null, bestScore = Infinity;
+            for (const state of Object.values(ns)) {
+              const s = score(state, room);
+              if (s < bestScore) { bestScore = s; best = state; }
+            }
+            if (best && bestScore < Infinity) {
+              newAssignments[room.id] = best.nurse.id;
+              commitToState(best, room);
+            }
+          }
+        }
+
+        const count = Object.keys(newAssignments).length;
+        const skipped = unassigned.length - count;
+
+        if (!count && !lockedRoomIds.size) {
+          showToast('⚠ Nurses are at capacity — add more nurses or clear assignments first');
+        } else {
+          // Apply new assignments on top of the already-reset room map
+          const finalRooms = { ...resetRooms };
+          Object.entries(newAssignments).forEach(([id, nurseId]) => {
+            finalRooms[id] = { ...finalRooms[id], nurseId };
+          });
+          setRooms(finalRooms);
+          const lockedCount = lockedRoomIds.size;
+          const msg = skipped
+            ? `⚡ Assigned ${count} rooms · ${skipped} skipped (capacity)${lockedCount ? ` · ${lockedCount} locked` : ''}`
+            : `⚡ Assigned ${count} room${count>1?'s':''} across ${N} nurse${N>1?'s':''}${lockedCount ? ` · ${lockedCount} locked` : ''}`;
+          showToast(msg);
+          setZapFeedbackNurses(new Set(nurses.map(n => n.id))); // show per-nurse feedback strips
+        }
+      } finally {
+        setZapLoading(false);
+      }
+    }, 320); // 320 ms spin — user can see the animation before result lands
+  }
+
+  // Drag from the Unassigned panel — reuses the same nurse-card drop handler
+  function handleUnassignedDragStart(roomId, e) {
+    e.dataTransfer.setData('roomIds', JSON.stringify([roomId]));
+    e.dataTransfer.effectAllowed = 'move';
+    setDragRoomIds([roomId]);
+  }
+
+  function addNurse() {
+    const name = newNurseName.trim() || `RN — Nurse ${nurses.length+1}`;
+    const color = NURSE_COLORS[colorIdx.current % NURSE_COLORS.length];
+    colorIdx.current++;
+    setNurses(prev=>[...prev,{id:'n'+Date.now(),name,color}]);
+    setNewNurseName('');
+  }
+
+  function deleteNurse(nurseId) {
+    if(!confirm(`Delete nurse? Rooms will be unassigned.`)) return;
+    setNurses(prev=>prev.filter(n=>n.id!==nurseId));
+    setRooms(prev=>{ const n={...prev}; Object.keys(n).forEach(id=>{ if(n[id].nurseId===nurseId) n[id]={...n[id],nurseId:null}; }); return n; });
+  }
+
+  function removeAllRooms(nurseId) {
+    setRooms(prev=>{ const n={...prev}; Object.keys(n).forEach(id=>{ if(n[id].nurseId===nurseId) n[id]={...n[id],nurseId:null}; }); return n; });
+  }
+
+  function saveRoom(updated) {
+    const wasOccupied = rooms[updated.id]?.occupied;
+    const becomingVacant = wasOccupied && !updated.occupied;
+    // When toggling a room to vacant: clear ALL patient properties, not just nurseId
+    const finalRoom = becomingVacant
+      ? { ...updated,
+          nurseId: null,
+          foley: false, drip: false, prisoner: false, totalCare: false,
+          glucose: false, highAcuity: false, sitter: false,
+          discharge: false, isolation: false, restraint: false, centralLine: false }
+      : updated;
+    setRooms(prev => ({ ...prev, [updated.id]: finalRoom }));
+    if (becomingVacant) {
+      setSelected(prev => { const next = new Set(prev); next.delete(updated.id); return next; });
+    }
+    setEditingRoom(null);
+  }
+
+  const [unassignedAnchor, setUnassignedAnchor] = useState(null);
+  const unassignedBtnRef = useRef();
+  const allOccRooms  = Object.values(rooms).filter(r=>r.occupied);
+  const totalOcc     = allOccRooms.length;
+  const totalAsg     = allOccRooms.filter(r=>r.nurseId).length;
+  const unassignedRooms = allOccRooms.filter(r=>!r.nurseId);
+  const totalTele    = allOccRooms.filter(r=>r.type==='TELE').length;
+  const totalSitter     = allOccRooms.filter(r=>r.sitter).length;
+  const totalDischarge  = allOccRooms.filter(r=>r.discharge).length;
+  const totalIsolation  = allOccRooms.filter(r=>r.isolation).length;
+  const totalRestraint  = allOccRooms.filter(r=>r.restraint).length;
+  const totalCentralLine = allOccRooms.filter(r=>r.centralLine).length;
+  const totalFoley       = allOccRooms.filter(r=>r.foley).length;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
+      {/* ── Header ── */}
+      <div style={{ background:'var(--bg-panel)', borderBottom:'1px solid var(--border)', padding:'9px 20px', display:'flex', alignItems:'center', gap:16, flexShrink:0, transition:'background 0.25s' }}>
+        <div>
+          <span style={{ fontSize:21, fontWeight:800, background:'linear-gradient(90deg,#3b82f6,#22c55e)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>CareFlow</span>
+          <span style={{ fontSize:12, color:'var(--text-4)', marginLeft:8 }}>MED/TELE</span>
+        </div>
+        <div style={{ marginLeft:'auto', display:'flex', gap:12, fontSize:11, color:'var(--text-4)', alignItems:'center' }}>
+          <span>{new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
+          {lastSaved && (
+            <span style={{ fontSize:10, color:'#22c55e', display:'flex', alignItems:'center', gap:4 }}>
+              ✓ saved {new Date(lastSaved).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
+            </span>
+          )}
+          <button onClick={()=>setPhoneDir(true)}
+            title="Hospital Phone Directory"
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 11px',
+              borderRadius:8, border:'1px solid var(--border-sub)', background:'transparent',
+              cursor:'pointer', fontSize:12, color:'var(--text-2)', fontWeight:600,
+              transition:'background 0.15s' }}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--bg-panel)'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            📞 <span>Directory</span>
+          </button>
+          <ThemeToggle theme={theme} onToggle={()=>setTheme(t=>t==='night'?'day':'night')}/>
+          <button className="btn btn-ghost" onClick={()=>{
+            setRooms(prev=>{
+              const next={};
+              Object.keys(prev).forEach(id=>{
+                next[id]={...prev[id], occupied:true, gender:'female', type:'TELE',
+                  foley:false, drip:false, prisoner:false, totalCare:false, glucose:false, highAcuity:false,
+                  sitter:false, discharge:false, isolation:false,
+                  restraint:false, centralLine:false, nurseId:null};
+              });
+              return next;
+            });
+            setSelected(new Set());
+            setLockedNurses(new Set());
+          }} style={{ fontSize:11, padding:'4px 12px', border:'1px solid var(--border-sub)' }}>
+            ↺ Reset
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main ── */}
+      <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
+        {/* Nurse panel */}
+        <div className="nurse-panel" style={{ background:'var(--bg-panel)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden', transition:'background 0.25s' }}>
+          <div style={{ padding:'12px 12px 8px', borderBottom:'1px solid var(--border)' }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-4)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span>Nursing Staff</span>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ background:'var(--btn-ghost-bg)', color:'var(--btn-ghost-tx)', borderRadius:10, padding:'1px 8px', fontSize:11, fontWeight:700, letterSpacing:0 }}>{nurses.length}</span>
+                {nurses.length > 0 && (
+                  <button
+                    onClick={()=>{
+                      if(!confirm('Delete all nurses and unassign all rooms?')) return;
+                      setNurses([]);
+                      setRooms(prev=>{ const n={}; Object.keys(prev).forEach(id=>{ n[id]={...prev[id],nurseId:null}; }); return n; });
+                      setLockedNurses(new Set());
+                    }}
+                    title="Delete all nurses and unassign all rooms"
+                    style={{
+                      background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.35)',
+                      color:'#f87171', borderRadius:6, padding:'2px 8px', fontSize:10, fontWeight:700,
+                      cursor:'pointer', display:'flex', alignItems:'center', gap:3, transition:'background 0.15s',
+                    }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(239,68,68,0.28)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='rgba(239,68,68,0.12)'}
+                  >🗑 Clear All</button>
+                )}
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <input type="text" placeholder="Add nurse name…" value={newNurseName}
+                onChange={e=>setNewNurseName(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&addNurse()}
+                style={{ flex:1, fontSize:12 }}
+              />
+              <button className="btn btn-primary" onClick={addNurse} style={{ whiteSpace:'nowrap' }}>+ Add</button>
+            </div>
+          </div>
+
+          {selected.size>0 && (
+            <div style={{ padding:'6px 12px', background:'var(--sel-bar-bg)', borderBottom:'1px solid var(--sel-bar-border)', fontSize:11, color:'var(--sel-bar-text)', display:'flex', alignItems:'center', justifyContent:'space-between', transition:'background 0.25s' }}>
+              <span>🔵 {selected.size} room{selected.size>1?'s':''} selected — drag to a nurse</span>
+              <button className="btn btn-ghost" onClick={()=>setSelected(new Set())} style={{ fontSize:10, padding:'2px 8px' }}>Clear</button>
+            </div>
+          )}
+
+          <div style={{ flex:1, overflowY:'auto', padding:12 }}>
+            {nurses.length===0 && (
+              <div style={{ textAlign:'center', color:'var(--text-4)', fontSize:13, marginTop:40 }}>No nurses added yet</div>
+            )}
+            {nurses.map(nurse=>(
+              <NurseCard key={nurse.id} nurse={nurse}
+                rooms={nurseRooms[nurse.id]||[]}
+                allRooms={rooms}
+                previewIds={dragRoomIds}
+                onRemoveAll={()=>removeAllRooms(nurse.id)}
+                onDrop={(e,trash)=>handleDropOnNurse(nurse.id,e,trash)}
+                onRename={name=>setNurses(prev=>prev.map(n=>n.id===nurse.id?{...n,name}:n))}
+                onDelete={()=>deleteNurse(nurse.id)}
+                locked={lockedNurses.has(nurse.id)}
+                onToggleLock={()=>setLockedNurses(prev=>{
+                  const next=new Set(prev);
+                  next.has(nurse.id)?next.delete(nurse.id):next.add(nurse.id);
+                  return next;
+                })}
+                showFeedback={zapFeedbackNurses.has(nurse.id)}
+                onFeedbackGood={()=>handleFeedbackGood(nurse.id)}
+                onFeedbackBad={reason=>handleFeedbackBad(nurse.id, reason)}
+              />
+            ))}
+          </div>
+
+          <div style={{ padding:8, borderTop:'1px solid var(--border)' }}>
+            <Legend/>
+          </div>
+        </div>
+
+        {/* Room grid */}
+        <div className="room-panel" style={{ background:'var(--bg-base)', transition:'background 0.25s' }}>
+          <CorridorGrid
+            allRooms={rooms}
+            selected={selected}
+            nurses={nurses}
+            nurseRooms={nurseRooms}
+            dragPreviewIds={dragRoomIds}
+            onSelect={selectRoom}
+            onDragStart={handleRoomDragStart}
+            onDblClick={id=>setEditingRoom(rooms[id])}
+            onAssignNurse={assignRoomToNurse}
+            onUnassign={unassignRoom}
+            onClearSelection={()=>setSelected(new Set())}
+            dashStats={{
+              vacant:    ROOM_IDS.length - totalOcc,
+              occupied:  totalOcc,
+              assigned:  totalAsg,
+              unassigned: totalOcc - totalAsg,
+              tele:      totalTele,
+              sitter:      totalSitter,
+              discharge:   totalDischarge,
+              isolation:   totalIsolation,
+              restraint:   totalRestraint,
+              centralLine: totalCentralLine,
+              foley:       totalFoley,
+              foleyRooms:       allOccRooms.filter(r=>r.foley),
+              sitterRooms:      allOccRooms.filter(r=>r.sitter),
+              dischargeRooms:   allOccRooms.filter(r=>r.discharge),
+              isolationRooms:   allOccRooms.filter(r=>r.isolation),
+              centralLineRooms: allOccRooms.filter(r=>r.centralLine),
+            }}
+            unassignedOpen={!!unassignedAnchor}
+            unassignedBtnRef={unassignedBtnRef}
+            onUnassignedClick={() => setUnassignedAnchor(a => {
+              if (a) return null;
+              return unassignedBtnRef.current?.getBoundingClientRect() ?? null;
+            })}
+            onZapAssign={zapAssign}
+            zapLoading={zapLoading}
+            fuelMode={fuelMode}
+            onToggleFuel={() => setFuelMode(f => !f)}
+            fbWeights={feedbackStore.weights}
+          />
+        </div>
+      </div>
+
+      {unassignedAnchor && (
+        <UnassignedPanel
+          rooms={unassignedRooms}
+          nurses={nurses}
+          nurseRooms={nurseRooms}
+          onAssign={assignRoomToNurse}
+          onDragStart={handleUnassignedDragStart}
+          onClose={()=>setUnassignedAnchor(null)}
+          anchor={unassignedAnchor}
+          triggerRef={unassignedBtnRef}
+        />
+      )}
+      {editingRoom && <PatientModal room={editingRoom} onClose={()=>setEditingRoom(null)} onSave={saveRoom}/>}
+      {pendingAssignment && (
+        <WarningModal
+          warning={pendingAssignment.warning}
+          onOverride={pendingAssignment.onConfirm}
+          onCancel={()=>setPendingAssignment(null)}
+        />
+      )}
+      {phoneDir && <PhoneDirectory onClose={()=>setPhoneDir(false)}/>}
+      {toast && <div className="warn-toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
