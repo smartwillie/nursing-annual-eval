@@ -118,7 +118,7 @@
     /* ── Form grid ── */
     .form-grid {
       display: grid;
-      grid-template-columns: 2.5fr 1fr 2fr 1fr;
+      grid-template-columns: 2fr 1.4fr 1fr 1.6fr 1fr;
       gap: .9rem;
       margin-bottom: .9rem;
     }
@@ -280,7 +280,7 @@
   <div class="logo">🏥</div>
   <div>
     <h1>Annual Evaluation</h1>
-    <p>MED/TELE</p>
+    <p>Mercy Hospital of Folsom</p>
   </div>
 </header>
 
@@ -405,6 +405,16 @@
           <input type="text" id="name-${id}" placeholder="e.g. Jane Smith" />
         </div>
         <div>
+          <label>Nursing Unit</label>
+          <select id="unit-${id}">
+            <option>Medical Telemetry</option>
+            <option>Medical Acute</option>
+            <option>Surgical Acute</option>
+            <option>ICU</option>
+            <option>ED</option>
+          </select>
+        </div>
+        <div>
           <label>Role</label>
           <select id="role-${id}">
             <option>RN</option>
@@ -449,6 +459,7 @@
 
     for (const id of cards) {
       const name  = document.getElementById(`name-${id}`).value.trim();
+      const unit  = document.getElementById(`unit-${id}`).value;
       const role  = document.getElementById(`role-${id}`).value;
       const level = document.getElementById(`level-${id}`).value;
       const paras = document.getElementById(`paras-${id}`).value;
@@ -460,7 +471,7 @@
         hasError = true;
         continue;
       }
-      employees.push({ name, role, level, paragraphs: paras, notes });
+      employees.push({ name, unit, role, level, paragraphs: paras, notes });
     }
 
     if (hasError) { showToast('Please fill in all required fields.', true); return; }
@@ -535,6 +546,7 @@
         card.innerHTML = `
           <div class="result-meta">
             <span class="result-name">${esc(r.name)}</span>
+            <span class="badge badge-role">${esc(r.unit)}</span>
             <span class="badge badge-role">${esc(r.role)}</span>
             <span class="badge ${badgeClass}">${esc(r.level)}</span>
             <span class="badge" style="background:#f0f0f0;color:#555">${r.paragraphs} ¶</span>
@@ -566,21 +578,21 @@
   function copyEval(i) {
     const r = resultsData[i];
     if (!r || r.error) return;
-    const text = `${r.name} — ${r.role} — ${r.level}\n\n${r.text}`;
+    const text = `${r.name} — ${r.unit} — ${r.role} — ${r.level}\n\n${r.text}`;
     navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
   }
 
   function downloadEval(i) {
     const r = resultsData[i];
     if (!r || r.error) return;
-    const text = `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`;
+    const text = `${r.name} — ${r.unit} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`;
     triggerDownload(text, `eval_${r.name.replace(/\s+/g, '_')}.txt`);
   }
 
   function downloadAll() {
     const parts = resultsData
       .filter(r => !r.error)
-      .map(r => `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
+      .map(r => `${r.name} — ${r.unit} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
       .join('\n\n' + '─'.repeat(60) + '\n\n');
     triggerDownload(parts, 'all_evaluations.txt');
   }

@@ -96,7 +96,7 @@
     .remove-btn:hover { background: #fee; border-color: var(--red); color: var(--red); }
 
     /* ── Form grid ── */
-    .fgrid { display: grid; grid-template-columns: 2.5fr 1fr 2fr 1fr; gap: .9rem; margin-bottom: .9rem; }
+    .fgrid { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1.6fr 1fr; gap: .9rem; margin-bottom: .9rem; }
     @media(max-width:680px) { .fgrid { grid-template-columns: 1fr 1fr; } }
     label { display: block; font-size: .77rem; font-weight: 600; color: var(--gray); margin-bottom: .3rem; letter-spacing: .4px; text-transform: uppercase; }
     input[type="text"], select, textarea {
@@ -184,7 +184,7 @@
   <div class="logo">🏥</div>
   <div>
     <h1>Annual Evaluation</h1>
-    <p>MED/TELE</p>
+    <p>Mercy Hospital of Folsom</p>
   </div>
   <div class="key-chip" onclick="changeKey()" title="Change API key">🔑 API Key ✓</div>
 </header>
@@ -224,7 +224,8 @@
 
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
-const SYSTEM = `You are a professional healthcare HR specialist generating annual performance evaluations for inpatient nursing unit staff at MHF Med Tele, Mercy Hospital of Folsom. Your evaluations are professional, warm, specific, and evidence-based — every sentence reflects the actual rating and manager's notes provided.
+function buildSystem(unit) {
+  return `You are a professional healthcare HR specialist generating annual performance evaluations for inpatient nursing unit staff at MHF ${unit}, Mercy Hospital of Folsom. Your evaluations are professional, warm, specific, and evidence-based — every sentence reflects the actual rating and manager's notes provided.
 
 PERFORMANCE RATING SCALE:
 - Exceeds Expectations: Consistently surpasses role requirements; demonstrates initiative, leadership, and serves as a model for peers.
@@ -287,6 +288,7 @@ STRICT RULES:
 - Use the employee's name naturally throughout (not every sentence).
 - Extract specific behaviors and patterns from the manager's notes — do not invent details not mentioned.
 - Do not number the paragraphs or add headers. Output plain paragraphs only.`;
+}
 
 // ── API Key ────────────────────────────────────────────────────────────────
 function saveKey() {
@@ -345,6 +347,16 @@ function addCard() {
       <div>
         <label>Employee Name</label>
         <input type="text" id="name-${id}" placeholder="e.g. Jane Smith"/>
+      </div>
+      <div>
+        <label>Nursing Unit</label>
+        <select id="unit-${id}">
+          <option>Medical Telemetry</option>
+          <option>Medical Acute</option>
+          <option>Surgical Acute</option>
+          <option>ICU</option>
+          <option>ED</option>
+        </select>
       </div>
       <div>
         <label>Role</label>
@@ -408,6 +420,7 @@ async function generate() {
     employees.push({
       id,
       name,
+      unit:  document.getElementById(`unit-${id}`).value,
       role:  document.getElementById(`role-${id}`).value,
       level: document.getElementById(`level-${id}`).value,
       paras: +document.getElementById(`paras-${id}`).value,
@@ -427,8 +440,8 @@ async function generate() {
     const e = employees[i];
     setProgress(10 + Math.round((i / employees.length) * 80), `Generating ${i + 1} of ${employees.length}: ${e.name}…`);
     try {
-      const text = await callAPI(e.name, e.role, e.level, e.notes, e.paras);
-      results.push({ name: e.name, role: e.role, level: e.level, paragraphs: e.paras, text });
+      const text = await callAPI(e.name, e.unit, e.role, e.level, e.notes, e.paras);
+      results.push({ name: e.name, unit: e.unit, role: e.role, level: e.level, paragraphs: e.paras, text });
     } catch (err) {
       results.push({ name: e.name, error: err.message });
     }
@@ -441,11 +454,12 @@ async function generate() {
   renderResults(results);
 }
 
-async function callAPI(name, role, level, notes, paras) {
+async function callAPI(name, unit, role, level, notes, paras) {
   const userMsg = `Generate a ${paras}-paragraph annual performance evaluation using the framework above.
 
 Employee Name: ${name}
 Role: ${role}
+Nursing Unit: ${unit}
 Performance Level: ${level}
 Number of Paragraphs: ${paras}
 
@@ -465,7 +479,7 @@ Output exactly ${paras} paragraph(s) separated by a blank line. No headers, no n
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: SYSTEM,
+      system: buildSystem(unit),
       messages: [{ role: 'user', content: userMsg }],
     }),
   });
@@ -500,6 +514,7 @@ function renderResults(data) {
       card.innerHTML = `
         <div class="result-meta">
           <span class="rname">${esc(r.name)}</span>
+          <span class="badge b-rl">${esc(r.unit)}</span>
           <span class="badge b-rl">${esc(r.role)}</span>
           <span class="badge ${bc}">${esc(r.level)}</span>
           <span class="badge" style="background:#f0f0f0;color:#555">${r.paragraphs} ¶</span>
@@ -528,18 +543,18 @@ function clearResults() {
 function copyEval(i) {
   const r = resultsData[i];
   if (!r || r.error) return;
-  navigator.clipboard.writeText(`${r.name} — ${r.role} — ${r.level}\n\n${r.text}`)
+  navigator.clipboard.writeText(`${r.name} — ${r.unit} — ${r.role} — ${r.level}\n\n${r.text}`)
     .then(() => showToast('Copied to clipboard!'));
 }
 function dlEval(i) {
   const r = resultsData[i];
   if (!r || r.error) return;
-  dl(`${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`,
+  dl(`${r.name} — ${r.unit} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`,
      `eval_${r.name.replace(/\s+/g,'_')}.txt`);
 }
 function downloadAll() {
   const txt = resultsData.filter(r => !r.error)
-    .map(r => `${r.name} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
+    .map(r => `${r.name} — ${r.unit} — ${r.role} — ${r.level}\n${'='.repeat(60)}\n\n${r.text}`)
     .join('\n\n' + '─'.repeat(60) + '\n\n');
   dl(txt, 'all_evaluations.txt');
 }

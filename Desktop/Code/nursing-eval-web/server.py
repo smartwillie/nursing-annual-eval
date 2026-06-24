@@ -5,7 +5,9 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-SYSTEM_PROMPT = """You are a professional healthcare HR specialist generating annual performance evaluations for inpatient nursing unit staff at MHF Med Tele, Mercy Hospital of Folsom. Your evaluations are professional, warm, specific, and evidence-based — every sentence reflects the actual rating and manager's notes provided.
+NURSING_UNITS = ["Medical Telemetry", "Medical Acute", "Surgical Acute", "ICU", "ED"]
+
+SYSTEM_PROMPT_TEMPLATE = """You are a professional healthcare HR specialist generating annual performance evaluations for inpatient nursing unit staff at MHF {unit}, Mercy Hospital of Folsom. Your evaluations are professional, warm, specific, and evidence-based — every sentence reflects the actual rating and manager's notes provided.
 
 PERFORMANCE RATING SCALE:
 - Exceeds Expectations: Consistently surpasses role requirements; demonstrates initiative, leadership, and serves as a model for peers.
@@ -71,11 +73,12 @@ STRICT RULES:
 """
 
 
-def generate_eval(name, role, level, notes, num_paragraphs):
+def generate_eval(name, role, level, notes, num_paragraphs, unit):
     prompt = f"""Generate a {num_paragraphs}-paragraph annual performance evaluation using the framework above.
 
 Employee Name: {name}
 Role: {role}
+Nursing Unit: {unit}
 Performance Level: {level}
 Number of Paragraphs: {num_paragraphs}
 
@@ -87,7 +90,7 @@ Output exactly {num_paragraphs} paragraph(s) separated by a blank line. No heade
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
+        system=SYSTEM_PROMPT_TEMPLATE.format(unit=unit),
         messages=[{"role": "user", "content": prompt}]
     )
     return message.content[0].text.strip()
@@ -106,6 +109,7 @@ def generate():
     for emp in employees:
         name = emp.get("name", "").strip()
         role = emp.get("role", "RN")
+        unit = emp.get("unit", "Medical Telemetry")
         level = emp.get("level", "Meets Expectations")
         notes = emp.get("notes", "").strip()
         num_paragraphs = int(emp.get("paragraphs", 2))
@@ -113,8 +117,8 @@ def generate():
             results.append({"error": "Name and notes are required.", "name": name or "Unknown"})
             continue
         try:
-            text = generate_eval(name, role, level, notes, num_paragraphs)
-            results.append({"name": name, "role": role, "level": level,
+            text = generate_eval(name, role, level, notes, num_paragraphs, unit)
+            results.append({"name": name, "role": role, "unit": unit, "level": level,
                             "paragraphs": num_paragraphs, "text": text})
         except Exception as e:
             results.append({"error": str(e), "name": name})
