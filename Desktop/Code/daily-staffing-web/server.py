@@ -16,7 +16,8 @@ app = Flask(__name__)
 JOBS_DIR = Path(tempfile.gettempdir()) / "daily-staffing-web-jobs"
 JOBS_DIR.mkdir(exist_ok=True)
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(os.environ.get("DAILY_STAFFING_DATA_DIR") or (Path(__file__).parent / "data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 SUMMARY_PATH = DATA_DIR / "MedSurg_Assignments_Summary.xlsx"
 medsurg.ensure_summary_exists(SUMMARY_PATH)
 
