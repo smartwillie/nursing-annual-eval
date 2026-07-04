@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daily Staffing Roster Builder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1e3a5f;
+      --blue:   #2d6a9f;
+      --light:  #e8f2fb;
+      --green:  #28a745;
+      --yellow: #ffc107;
+      --red:    #dc3545;
+      --gray:   #6c757d;
+      --border: #d0dae8;
+      --card-bg:#ffffff;
+      --body-bg:#f0f4f9;
+      --text:   #1a1a2e;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--body-bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    header .logo { font-size: 2rem; }
+    header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: .3px; }
+    header p  { font-size: .85rem; opacity: .8; margin-top: .15rem; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 { font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; }
+
+    .field { margin-bottom: 1.25rem; }
+    .field label {
+      display: block;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: .4rem;
+    }
+    .field .hint { font-size: .78rem; color: var(--gray); margin-top: .3rem; }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--blue); background: var(--light); }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .dropzone .filename { font-weight: 600; color: var(--navy); word-break: break-all; }
+    .dropzone .placeholder { color: var(--gray); font-size: .9rem; }
+
+    select {
+      width: 100%;
+      padding: .6rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .9rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: .75rem 1.5rem;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background .15s;
+    }
+    .btn:hover { background: var(--navy); }
+    .btn:disabled { background: var(--gray); cursor: not-allowed; }
+
+    .status {
+      margin-top: 1rem;
+      padding: .85rem 1rem;
+      border-radius: 8px;
+      font-size: .88rem;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.error { background: #fdecea; color: var(--red); border: 1px solid #f5c6cb; }
+    .status.success { background: #eaf7ec; color: #1e7e34; border: 1px solid #c3e6cb; }
+    .status.warn { background: #fff8e1; color: #8a6d00; border: 1px solid #ffe08a; }
+
+    .status ul { margin: .5rem 0 0 1.1rem; }
+
+    .download-link {
+      display: inline-block;
+      margin-top: .75rem;
+      font-weight: 700;
+      color: var(--navy);
+      text-decoration: underline;
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      margin-bottom: 1.25rem;
+    }
+    .checkbox-row input { margin-top: .2rem; width: 16px; height: 16px; }
+    .checkbox-row label { font-weight: 600; color: var(--navy); font-size: .9rem; }
+
+    .optional-tag {
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      margin-left: .4rem;
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    .btn-secondary {
+      background: #fff;
+      color: var(--blue);
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      padding: .55rem 1rem;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: var(--light); }
+    .summary-status { font-size: .8rem; margin-top: .6rem; }
+    .summary-status.ok { color: #1e7e34; }
+    .summary-status.error { color: var(--red); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🗓️</div>
+    <div>
+      <h1>Daily Staffing Roster Builder</h1>
+      <p>Upload the daily roster + rotation tracker to generate the final sheet</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>1. Daily Roster by Shift export</h2>
+      <div class="field">
+        <div class="dropzone" id="dz-roster">
+          <input type="file" id="roster" accept=".xlsx" />
+          <div class="placeholder" id="roster-placeholder">Click or drag the roster .xlsx file here</div>
+          <div class="filename" id="roster-filename" style="display:none"></div>
+        </div>
+      </div>
+
+      <h2>2. RN/CNA Rotation Tracker</h2>
+      <div class="field">
+        <div class="dropzone" id="dz-tracker">
+          <input type="file" id="tracker" accept=".xlsx" />
+          <div class="placeholder" id="tracker-placeholder">Click or drag the rotation tracker .xlsx file here</div>
+          <div class="filename" id="tracker-filename" style="display:none"></div>
+        </div>
+      </div>
+
+      <h2>3. Day Assignment export <span class="optional-tag">Optional</span></h2>
+      <div class="field">
+        <div class="dropzone" id="dz-assignment">
+          <input type="file" id="assignment" accept=".xlsx" />
+          <div class="placeholder" id="assignment-placeholder">Only needed if today's med/surg assignments haven't been recorded yet</div>
+          <div class="filename" id="assignment-filename" style="display:none"></div>
+        </div>
+        <div class="hint">If provided, today's med/surg assignments are added to the running summary before the turn tracker runs.</div>
+      </div>
+
+      <div class="field">
+        <label for="shift">Shift</label>
+        <select id="shift">
+          <option value="">Auto-detect from Coverage Period</option>
+          <option value="day">Day</option>
+          <option value="noc">NOC</option>
+        </select>
+        <div class="hint">Leave on auto-detect unless the roster's coverage period is misleading.</div>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="include-turn" checked />
+        <label for="include-turn">Include Med/Surg Turn Tracker sheet (Day shift only)</label>
+      </div>
+
+      <button class="btn" id="submit-btn">
+        <span class="spinner" id="spinner"></span>
+        <span id="btn-label">Build Final Roster</span>
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Med/Surg Summary</h2>
+      <p class="hint" style="margin-bottom:1rem;">This running summary tracks every nurse's med/surg history and drives the turn tracker above.</p>
+
+      <div class="field">
+        <label>Update history from a Day Assignment export</label>
+        <div class="dropzone" id="dz-append">
+          <input type="file" id="append-assignment" accept=".xlsx" />
+          <div class="placeholder" id="append-placeholder">Click or drag a Day Assignment .xlsx file here</div>
+          <div class="filename" id="append-filename" style="display:none"></div>
+        </div>
+        <div class="hint">Use this any time you just want to record a day's med/surg assignments — no roster or tracker needed.</div>
+      </div>
+      <button class="btn-secondary" id="append-btn" style="margin-bottom:1rem;">Append to Summary</button>
+      <div class="summary-status" id="append-status"></div>
+
+      <div class="summary-row" style="margin-top:.5rem;">
+        <a class="btn-secondary" href="/summary/download" download>Download current summary</a>
+        <label class="btn-secondary" style="cursor:pointer;">
+          Replace summary…
+          <input type="file" id="summary-replace" accept=".xlsx" style="display:none" />
+        </label>
+      </div>
+      <div class="summary-status" id="summary-status"></div>
+    </div>
+  </div>
+
+  <script>
+    const rosterInput = document.getElementById('roster');
+    const trackerInput = document.getElementById('tracker');
+    const dzRoster = document.getElementById('dz-roster');
+    const dzTracker = document.getElementById('dz-tracker');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = document.getElementById('spinner');
+    const btnLabel = document.getElementById('btn-label');
+    const statusEl = document.getElementById('status');
+
+    function wireDropzone(dz, input, placeholderId, filenameId) {
+      const placeholder = document.getElementById(placeholderId);
+      const filenameEl = document.getElementById(filenameId);
+      input.addEventListener('change', () => {
+        if (input.files.length) {
+          placeholder.style.display = 'none';
+          filenameEl.style.display = 'block';
+          filenameEl.textContent = input.files[0].name;
+        }
+      });
+      ['dragover', 'dragleave', 'drop'].forEach(evt => {
+        dz.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dz.classList.toggle('drag', evt === 'dragover');
+        });
+      });
+      dz.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+
+    const assignmentInput = document.getElementById('assignment');
+    const dzAssignment = document.getElementById('dz-assignment');
+    const includeTurnCheckbox = document.getElementById('include-turn');
+
+    wireDropzone(dzRoster, rosterInput, 'roster-placeholder', 'roster-filename');
+    wireDropzone(dzTracker, trackerInput, 'tracker-placeholder', 'tracker-filename');
+    wireDropzone(dzAssignment, assignmentInput, 'assignment-placeholder', 'assignment-filename');
+
+    function showStatus(kind, html) {
+      statusEl.className = 'status show ' + kind;
+      statusEl.innerHTML = html;
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      if (!rosterInput.files.length) {
+        showStatus('error', 'Please choose the Daily Roster file.');
+        return;
+      }
+      if (!trackerInput.files.length) {
+        showStatus('error', 'Please choose the RN/CNA Rotation Tracker file.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('roster', rosterInput.files[0]);
+      formData.append('tracker', trackerInput.files[0]);
+      if (assignmentInput.files.length) {
+        formData.append('assignment', assignmentInput.files[0]);
+      }
+      formData.append('shift', document.getElementById('shift').value);
+      formData.append('include_turn', includeTurnCheckbox.checked ? 'on' : '');
+
+      submitBtn.disabled = true;
+      spinner.classList.add('show');
+      btnLabel.textContent = 'Building…';
+      statusEl.classList.remove('show');
+
+      try {
+        const resp = await fetch('/build', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (!data.ok) {
+          showStatus('error', data.error || 'Something went wrong.');
+        } else {
+          let html = 'Final roster built successfully.<br>' +
+            `<a class="download-link" href="${data.download_url}">Download Final.xlsx</a>`;
+          let kind = 'success';
+          if (data.unmatched && data.unmatched.length) {
+            kind = 'warn';
+            html += '<br><br><strong>Not found in the tracker</strong> (check for typos or missing rotation entries):<ul>' +
+              data.unmatched.map(u => `<li>${u.name} (${u.profile})</li>`).join('') +
+              '</ul>';
+          }
+          if (data.turn) {
+            if (data.turn.included) {
+              html += `<br><br>Med/Surg turn tracker included (${data.turn.eligible_count} eligible nurses, ${data.turn.never_count} never had med/surg).`;
+            } else {
+              kind = kind === 'success' ? 'warn' : kind;
+              html += `<br><br>Turn tracker skipped: ${data.turn.reason}`;
+            }
+          }
+          showStatus(kind, html);
+        }
+      } catch (err) {
+        showStatus('error', 'Upload failed: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        spinner.classList.remove('show');
+        btnLabel.textContent = 'Build Final Roster';
+      }
+    });
+
+    const appendAssignmentInput = document.getElementById('append-assignment');
+    const dzAppend = document.getElementById('dz-append');
+    const appendBtn = document.getElementById('append-btn');
+    const appendStatusEl = document.getElementById('append-status');
+
+    wireDropzone(dzAppend, appendAssignmentInput, 'append-placeholder', 'append-filename');
+
+    appendBtn.addEventListener('click', async () => {
+      if (!appendAssignmentInput.files.length) {
+        appendStatusEl.className = 'summary-status error';
+        appendStatusEl.textContent = 'Please choose a Day Assignment file first.';
+        return;
+      }
+      const formData = new FormData();
+      formData.append('assignment', appendAssignmentInput.files[0]);
+
+      appendBtn.disabled = true;
+      appendStatusEl.className = 'summary-status';
+      appendStatusEl.textContent = 'Appending…';
+
+      try {
+        const resp = await fetch('/summary/append', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.ok) {
+          appendStatusEl.className = 'summary-status ok';
+          if (data.nurses.length) {
+            appendStatusEl.innerHTML = `Added ${data.date}: ` +
+              data.nurses.map(n => n.name).join(', ') +
+              ` (${data.nurses.length} nurse${data.nurses.length === 1 ? '' : 's'}).`;
+          } else {
+            appendStatusEl.textContent = `No med/surg nurses found for ${data.date}. Nothing was added.`;
+          }
+        } else {
+          appendStatusEl.className = 'summary-status error';
+          appendStatusEl.textContent = data.error || 'Failed to append.';
+        }
+      } catch (err) {
+        appendStatusEl.className = 'summary-status error';
+        appendStatusEl.textContent = 'Upload failed: ' + err.message;
+      } finally {
+        appendBtn.disabled = false;
+      }
+    });
+
+    const summaryReplaceInput = document.getElementById('summary-replace');
+    const summaryStatusEl = document.getElementById('summary-status');
+
+    summaryReplaceInput.addEventListener('change', async () => {
+      if (!summaryReplaceInput.files.length) return;
+      const formData = new FormData();
+      formData.append('summary', summaryReplaceInput.files[0]);
+      summaryStatusEl.className = 'summary-status';
+      summaryStatusEl.textContent = 'Uploading…';
+      try {
+        const resp = await fetch('/summary/replace', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.ok) {
+          summaryStatusEl.className = 'summary-status ok';
+          summaryStatusEl.textContent = 'Summary replaced successfully.';
+        } else {
+          summaryStatusEl.className = 'summary-status error';
+          summaryStatusEl.textContent = data.error || 'Failed to replace summary.';
+        }
+      } catch (err) {
+        summaryStatusEl.className = 'summary-status error';
+        summaryStatusEl.textContent = 'Upload failed: ' + err.message;
+      } finally {
+        summaryReplaceInput.value = '';
+      }
+    });
+  </script>
+</body>
+</html>

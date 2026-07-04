@@ -12,6 +12,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5051"],
       "port": 5051
+    },
+    {
+      "name": "daily-staffing-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["daily-staffing-web/server.py"],
+      "port": 5060
     }
   ]
 }
