@@ -2352,7 +2352,7 @@ function RosterBuilderModal({ onClose }) {
       const hasRooms = rows.some(r=>r.rooms);
       setResult({ rows, rnCount:rnSeq, cnaCount:cnaSeq, unmatched, shift:shift.toUpperCase(),
         hasHC:hasAnyHC, hasFlt:hasAnyFlt, hasSit:hasAnySit, hasRooms, turnOrder, dbg,
-        rWb, usedSheet, headerRow, nameCol });
+        rWb, usedSheet, headerRow, nameCol, profCol });
       setView('preview');
     } catch(e) {
       setErr((e.message || String(e)) + (dbg.length ? '\n\nDiagnostic:\n'+dbg.join('\n') : ''));
@@ -2381,6 +2381,28 @@ function RosterBuilderModal({ onClose }) {
       if (sn !== result.usedSheet) { delete wb.Sheets[sn]; }
     }
     wb.SheetNames = [result.usedSheet];
+
+    // xlsm MT-sheet remapping: Profile col4→col6, Time col5→col11 (mirrors Python xlsm_remap_sheet)
+    // profCol===4 means we read from an xlsm MT sheet, not Sheet2
+    if (result.profCol === 4) {
+      ws['!merges'] = []; // clear all merged cells first
+      const remapEnd = result.rows.length > 0 ? Math.max(...result.rows.map(r => r.excelRow)) : hdr;
+      for (let ri0 = hdr - 1; ri0 <= remapEnd - 1; ri0++) {
+        const pCell = ws[XLSX.utils.encode_cell({r:ri0, c:3})]; // Profile was at col4 (0-based 3)
+        const tCell = ws[XLSX.utils.encode_cell({r:ri0, c:4})]; // Time was at col5 (0-based 4)
+        // Copy to Sheet2 target positions
+        if (pCell) ws[XLSX.utils.encode_cell({r:ri0, c:5})]  = {...pCell}; // → col6 (0-based 5)
+        else        delete ws[XLSX.utils.encode_cell({r:ri0, c:5})];
+        if (tCell) ws[XLSX.utils.encode_cell({r:ri0, c:10})] = {...tCell}; // → col11 (0-based 10)
+        else        delete ws[XLSX.utils.encode_cell({r:ri0, c:10})];
+        // Clear source cols and unused cols 7-10 (0-based 3,4,6,7,8,9)
+        [3,4,6,7,8,9].forEach(c => delete ws[XLSX.utils.encode_cell({r:ri0, c})]);
+      }
+      // Rename sheet to Sheet2
+      wb.Sheets['Sheet2'] = ws;
+      wb.SheetNames = ['Sheet2'];
+      delete wb.Sheets[result.usedSheet];
+    }
 
     // Strip merged cells that overlap col B(1), M(12), N(13), O(14)
     // for header row and all data rows — so our writes aren't swallowed by merges
