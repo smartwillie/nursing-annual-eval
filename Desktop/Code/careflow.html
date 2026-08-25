@@ -2109,10 +2109,15 @@ function RosterBuilderModal({ onClose }) {
       dbg.push(`Tracker sheets: ${tWb.SheetNames.join(', ')}`);
 
       // Prefer MT/MED TELE sheet (xlsm multi-unit), then Sheet2, then any sheet with data
-      const MT_NAMES = new Set(['mt', 'medtele']);
-      const normSN = n => n.toLowerCase().replace(/[\s/]+/g, '');
+      // Strip ALL non-alphanumeric chars so "MED-TELE", "Med/Tele", "Med Tele" all normalize to "medtele"
+      function normSN(n) { return n.toLowerCase().replace(/[^a-z0-9]/g, ''); }
       let rWs = null, usedSheet = '';
-      const mtSheet = rWb.SheetNames.find(n => MT_NAMES.has(normSN(n)));
+      const mtSheet = rWb.SheetNames.find(n => {
+        const nn = normSN(n);
+        return nn === 'mt' || nn === 'medtele' || nn.startsWith('medtele') ||
+               (nn.startsWith('med') && nn.includes('tele'));
+      });
+      dbg.push(`MT sheet detected: ${mtSheet || '(none)'}`);
       const ordered = mtSheet
         ? [mtSheet, ...rWb.SheetNames.filter(n => n !== mtSheet)]
         : rWb.SheetNames.filter(n=>n==='Sheet2').concat(rWb.SheetNames.filter(n=>n!=='Sheet2'));
@@ -2595,6 +2600,13 @@ function RosterBuilderModal({ onClose }) {
                   <button onClick={downloadExcel} style={{...baseBtn,background:'#15803d',color:'white'}}>⬇ Excel</button>
                   <button onClick={doPrint}        style={{...baseBtn,background:'#0284c7',color:'white'}}>🖨 Print</button>
                 </div>
+              </div>
+
+              <div style={{fontSize:10,color:'var(--text-2)',marginBottom:8,fontFamily:'monospace'}}>
+                Sheet: <b style={{color:'var(--text-1)'}}>{result.usedSheet}</b>
+                {result.dbg && result.dbg.length > 0 && (
+                  <span style={{marginLeft:10,opacity:0.6}}>{result.dbg.slice(0,3).join(' · ')}</span>
+                )}
               </div>
 
               {result.unmatched > 0 && (
