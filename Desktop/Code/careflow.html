@@ -2108,16 +2108,30 @@ function RosterBuilderModal({ onClose }) {
       dbg.push(`Roster sheets: ${rWb.SheetNames.join(', ')}`);
       dbg.push(`Tracker sheets: ${tWb.SheetNames.join(', ')}`);
 
-      // Prefer MT/MED TELE sheet (xlsm multi-unit), then Sheet2, then any sheet with data
-      // Strip ALL non-alphanumeric chars so "MED-TELE", "Med/Tele", "Med Tele" all normalize to "medtele"
-      function normSN(n) { return n.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+      // Pick the MT / Med Tele sheet.
+      // Strategy 1: scan rows 8-14 of each sheet for "TELEMETRY" or "MED.*TEL" in the department line.
+      // Strategy 2: fall back to sheet-name matching ("MT", "MED/TELE", "Med Tele", etc.)
+      // Strategy 3: try Sheet2 first, then first sheet with data (xlsx default).
+      const normSN = n => n.toLowerCase().replace(/[^a-z0-9]/g, '');
+      function sheetHasTelemetry(ws) {
+        if (!ws) return false;
+        for (let r = 8; r <= 14; r++) {
+          const v = getCell(ws, r, 1);
+          if (v && typeof v === 'string' && /TELEMETRY|MED.*TEL/i.test(v)) return true;
+        }
+        return false;
+      }
       let rWs = null, usedSheet = '';
-      const mtSheet = rWb.SheetNames.find(n => {
+      // Strategy 1: department name scan (most reliable for xlsm multi-unit files)
+      const telSheet = rWb.SheetNames.find(n => sheetHasTelemetry(rWb.Sheets[n]));
+      // Strategy 2: sheet name matching
+      const mtByName = !telSheet && rWb.SheetNames.find(n => {
         const nn = normSN(n);
         return nn === 'mt' || nn === 'medtele' || nn.startsWith('medtele') ||
                (nn.startsWith('med') && nn.includes('tele'));
       });
-      dbg.push(`MT sheet detected: ${mtSheet || '(none)'}`);
+      const mtSheet = telSheet || mtByName || null;
+      dbg.push(`MT sheet: ${mtSheet||'(none)'} via ${telSheet?'dept':mtByName?'name':'(none)'}`);
       const ordered = mtSheet
         ? [mtSheet, ...rWb.SheetNames.filter(n => n !== mtSheet)]
         : rWb.SheetNames.filter(n=>n==='Sheet2').concat(rWb.SheetNames.filter(n=>n!=='Sheet2'));
