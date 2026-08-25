@@ -2,13 +2,19 @@
 """
 build_roster.py — Build an enriched daily nursing roster.
 
-Combines a "Daily Roster by Shift" export with the unit's RN/CNA rotation
+Combines a "Daily Roster by Shift" export (or a multi-unit .xlsm file
+containing a sheet named MT/mt/MED/TELE) with the unit's RN/CNA rotation
 tracker. Output:
   - sequential numbering in column B (RN-class and CNA-class separate streams)
   - last HC + last float dates (RN-class) or last sit + last float (CNA-class)
     in columns M and O of the roster's existing layout
   - a "sit / float" sub-header divider row between the two sections
   - two helper sheets: 'RN HC List' and 'RN Float List'
+
+Multi-unit file support:
+  If --roster points to a file with multiple unit sheets (e.g. ED, ICU, MT...),
+  the script auto-detects a sheet named MT, mt, MED/TELE, or MED TELE and
+  processes only that sheet — no flag needed.
 """
 
 from __future__ import annotations
@@ -16,12 +22,61 @@ from __future__ import annotations
 import argparse
 import re
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+# ---------------------------------------------------------------------------
+# Multi-unit sheet detection
+# ---------------------------------------------------------------------------
+
+# Normalized (lowercase, no spaces/slashes) names that identify the MT sheet
+# in a multi-unit roster file.
+_MT_NAMES_NORM = {"mt", "medtele"}
+
+def _norm_sheet(name: str) -> str:
+    return re.sub(r"[\s/]+", "", name).lower()
+
+def find_mt_sheet(wb) -> str | None:
+    """Return the sheetname for the MT/MED TELE unit, or None if not found."""
+    for sn in wb.sheetnames:
+        if _norm_sheet(sn) in _MT_NAMES_NORM:
+            return sn
+    return None
+
+
+def detect_col_layout(ws, header_row: int) -> tuple[int, int | None]:
+    """
+    Scan the header row and return (profile_col, code_col).
+
+    Standard 'Daily Roster by Shift' layout: Profile in col 6, codes in col 10.
+    MT/multi-unit layout: Profile in col 4, no code column.
+    Falls back to col 6 / col 10 if the header scan finds nothing.
+    """
+    profile_col = None
+    code_col = None
+    for col in range(1, ws.max_column + 1):
+        v = ws.cell(header_row, col).value
+        if not v or not isinstance(v, str):
+            continue
+        vl = v.strip().lower()
+        if "profile" in vl and profile_col is None:
+            profile_col = col
+        if vl in {"code", "codes"} and code_col is None:
+            code_col = col
+    # If no "Profile" header found, fall back to standard column 6
+    if profile_col is None:
+        profile_col = 6
+    # code_col stays None if not found (MT-style sheets don't have one)
+    # but for standard sheets col 10 is the code column even without a header
+    if code_col is None and profile_col == 6:
+        code_col = 10
+    return profile_col, code_col
+
 
 # ---------------------------------------------------------------------------
 # Profile / code classification
@@ -73,7 +128,7 @@ def _is_generational_roman_suffix(s):
 
 
 def normalize_name(raw):
-    """Normalize 'BALGOS, DENNIS (PD)' → ('BALGOS', 'DENNIS')."""
+    """Normalize 'BALGOS, DENNIS (PD)' -> ('BALGOS', 'DENNIS')."""
     if not isinstance(raw, str):
         return None
     cleaned = _PAREN_RE.sub("", raw).strip()
@@ -322,6 +377,40 @@ def safe_set(ws, coord, value):
     cell.value = value
 
 
+def xlsm_remap_sheet(ws, header_row, data_end):
+    """
+    Remap xlsm MT sheet columns to match xlsx Sheet2 layout.
+    MT:     col3=Name, col4=Profile, col5=Time, col6=Hours, col7-9=merged notes
+    Sheet2: col3=Name, col6=Profile, col11=Time, col12=Hours
+    Unmerges all ranges, remaps header and data rows, renames sheet to Sheet2.
+    """
+    # Unmerge everything first
+    for ref in [str(mr) for mr in list(ws.merged_cells.ranges)]:
+        ws.unmerge_cells(ref)
+    # Replace any leftover MergedCell stubs with real cells
+    for r in range(1, data_end + 2):
+        for c in range(1, 16):
+            coord = (r, c)
+            if isinstance(ws._cells.get(coord), MergedCell):
+                ws._cells[coord] = Cell(ws, row=r, column=c)
+
+    for r in range(header_row, data_end + 1):
+        # Save values before overwriting (col6 is both Hours-src and Profile-dst)
+        profile   = ws.cell(r, 4).value
+        time_val  = ws.cell(r, 5).value
+        hours_val = ws.cell(r, 6).value
+
+        ws.cell(r, 6).value  = profile    # Profile: col4 → col6
+        ws.cell(r, 11).value = time_val   # Time:    col5 → col11
+        ws.cell(r, 12).value = hours_val  # Hours:   col6(orig) → col12
+
+        # Clear source columns and notes area
+        for c in [4, 5, 7, 8, 9, 10]:
+            ws.cell(r, c).value = None
+
+    ws.title = "Sheet2"
+
+
 # ---------------------------------------------------------------------------
 # Helper sheets
 # ---------------------------------------------------------------------------
@@ -405,10 +494,22 @@ def add_rn_list_sheets(wb, decisions):
 
 def build(roster_path, tracker_path, output_path, shift_override=None, verbose=False):
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(roster_path, output_path)
-    wb = load_workbook(output_path)
+    is_xlsm = roster_path.lower().endswith('.xlsm')
+    # Load directly from source; keep_vba=False gives a clean .xlsx output.
+    wb = load_workbook(roster_path, keep_vba=False)
 
-    keep = "Sheet2" if "Sheet2" in wb.sheetnames else wb.sheetnames[0]
+    # --- Sheet selection ---
+    # If the file has multiple unit sheets (e.g. ED, ICU, MT, SAU...),
+    # extract just the MT/MED TELE sheet and discard the rest.
+    # Otherwise fall back to the standard single-sheet behaviour (Sheet2).
+    mt_sheet = find_mt_sheet(wb)
+    if mt_sheet:
+        keep = mt_sheet
+        if verbose:
+            print(f"[info] multi-unit file detected — using sheet '{keep}'")
+    else:
+        keep = "Sheet2" if "Sheet2" in wb.sheetnames else wb.sheetnames[0]
+
     for sn in list(wb.sheetnames):
         if sn != keep:
             del wb[sn]
@@ -417,14 +518,20 @@ def build(roster_path, tracker_path, output_path, shift_override=None, verbose=F
     shift = detect_shift(ws, shift_override)
     lookups = load_tracker(tracker_path, shift)
     header_row, data_start, data_end = find_data_bounds(ws)
+
+    # Detect column layout — MT sheets have Profile in col 4, no code column.
+    # Standard sheets have Profile in col 6, codes in col 10.
+    profile_col, code_col = detect_col_layout(ws, header_row)
+
     if verbose:
-        print(f"[info] header row {header_row}, data rows {data_start}-{data_end}, shift {shift.upper()}")
+        print(f"[info] header row {header_row}, data rows {data_start}-{data_end}, "
+              f"shift {shift.upper()}, profile_col={profile_col}, code_col={code_col}")
 
     employees = []
     for r in range(data_start, data_end + 1):
         name = get_value(ws.cell(row=r, column=3).value)
-        prof = get_value(ws.cell(row=r, column=6).value)
-        code = get_value(ws.cell(row=r, column=10).value)
+        prof = get_value(ws.cell(row=r, column=profile_col).value)
+        code = get_value(ws.cell(row=r, column=code_col).value) if code_col else None
         if not name:
             continue
         employees.append({"row": r, "name": name, "profile": prof, "code": code})
@@ -497,6 +604,11 @@ def build(roster_path, tracker_path, output_path, shift_override=None, verbose=F
     for e in other_emps:
         process(e, [0], "other")
 
+    # For xlsm MT sheet: remap Profile/Time/Hours to Sheet2 column positions
+    # before writing B/M/O, so the output layout matches the standard xlsx format.
+    if is_xlsm:
+        xlsm_remap_sheet(ws, header_row, data_end)
+
     split_mo(ws, header_row)
     safe_set(ws, f"M{header_row}", "hc")
     safe_set(ws, f"O{header_row}", "float")
@@ -522,7 +634,7 @@ def build(roster_path, tracker_path, output_path, shift_override=None, verbose=F
         if unmatched:
             print(f"[warn] {len(unmatched)} employees not found in tracker:")
             for name, prof, where in unmatched:
-                print(f"        - {name!r} ({prof}) — searched {where}")
+                print(f"        - {name!r} ({prof}) -- searched {where}")
 
     return unmatched, shift
 
