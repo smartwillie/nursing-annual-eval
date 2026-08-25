@@ -1854,7 +1854,7 @@ function FileZone({ file, onFile, onClear, icon, label, hint, required }) {
       background: chosen ? 'rgba(34,197,94,0.06)' : 'var(--bg-card)',
       transition:'border-color 0.2s,background 0.2s',
     }}>
-      <input type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}}
+      <input type="file" accept=".xlsx,.xls,.xlsm,.csv" style={{display:'none'}}
         onChange={e => { const f=e.target.files[0]; if(f) onFile(f); e.target.value=''; }}/>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
         <span style={{fontSize:22}}>{icon}</span>
@@ -1882,7 +1882,7 @@ function MultiFileZone({ files, onAdd, onRemove, icon, label, hint }) {
 
   function handleDrop(e) {
     e.preventDefault(); setDragging(false);
-    const dropped = Array.from(e.dataTransfer.files).filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+    const dropped = Array.from(e.dataTransfer.files).filter(f => /\.(xlsx|xlsm|xls|csv)$/i.test(f.name));
     dropped.forEach(f => onAdd(f));
   }
 
@@ -1899,7 +1899,7 @@ function MultiFileZone({ files, onAdd, onRemove, icon, label, hint }) {
           background: dragging ? 'rgba(59,130,246,0.07)' : hasFiles ? 'rgba(34,197,94,0.06)' : 'var(--bg-card)',
           transition:'border-color 0.2s,background 0.2s',
         }}>
-        <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" multiple style={{display:'none'}}
+        <input ref={inputRef} type="file" accept=".xlsx,.xls,.xlsm,.csv" multiple style={{display:'none'}}
           onChange={e => { Array.from(e.target.files).forEach(f => onAdd(f)); e.target.value=''; }}/>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:22}}>{icon}</span>
@@ -2108,13 +2108,17 @@ function RosterBuilderModal({ onClose }) {
       dbg.push(`Roster sheets: ${rWb.SheetNames.join(', ')}`);
       dbg.push(`Tracker sheets: ${tWb.SheetNames.join(', ')}`);
 
-      // Try Sheet2 first (skill default), then any sheet containing employee data
+      // Prefer MT/MED TELE sheet (xlsm multi-unit), then Sheet2, then any sheet with data
+      const MT_NAMES = new Set(['mt', 'medtele']);
+      const normSN = n => n.toLowerCase().replace(/[\s/]+/g, '');
       let rWs = null, usedSheet = '';
-      const trySheets = rWb.SheetNames.filter(n=>n==='Sheet2').concat(rWb.SheetNames.filter(n=>n!=='Sheet2'));
-      for (const sn of trySheets) {
+      const mtSheet = rWb.SheetNames.find(n => MT_NAMES.has(normSN(n)));
+      const ordered = mtSheet
+        ? [mtSheet, ...rWb.SheetNames.filter(n => n !== mtSheet)]
+        : rWb.SheetNames.filter(n=>n==='Sheet2').concat(rWb.SheetNames.filter(n=>n!=='Sheet2'));
+      for (const sn of ordered) {
         const ws = rWb.Sheets[sn];
         if (!ws) continue;
-        // Quick sanity check: does it have any non-empty cells?
         if (wsMaxRow(ws) > 5) { rWs = ws; usedSheet = sn; break; }
       }
       if (!rWs) throw new Error('Could not read any sheet from the roster file.');
