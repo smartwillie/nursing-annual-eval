@@ -3751,7 +3751,7 @@ function CenterDashboard({ vacant, occupied, assigned, unassigned, tele, medsurg
                 {dashCharacter==="grogu" ? (
                   <img src={_GROGU_IMG_SRC} width="56" height="56" style={{display:'block'}}/>
                 ) : (
-                  <span style={{fontSize:36,lineHeight:1,display:'block'}}>{dashCharacter==="monkey"?"🐒":"🐼"}</span>
+                  <span style={{fontSize:36,lineHeight:1,display:'block',transform:'scaleX(-1)'}}>{dashCharacter==="monkey"?"🐒":"🐼"}</span>
                 )}
               </span>
               {dashCharacter!=="grogu" && (
