@@ -3743,13 +3743,13 @@ function CenterDashboard({ vacant, occupied, assigned, unassigned, tele, medsurg
       <div className="rabbit-track">
         <div ref={_runnerRef} className="rabbit-runner" onClick={onMonkeyClick} title="Click to search unit policies">
           <div className="monkey-group">
-            <div className="monkey-bubble" onClick={e=>{e.stopPropagation();onMonkeyClick();}}>{dashCharacter==="grogu"?"I am Grogu, ask me anything":dashCharacter==="monkey"?"🐵 Ask about policies!":"🐼 Search policies!"}</div>
+            <div className="monkey-bubble" onClick={e=>{e.stopPropagation();onMonkeyClick();}}>{dashCharacter==="grogu"?"I am Grogu, ask me anything":dashCharacter==="monkey"?"🐒 Ask about policies!":"🐼 Search policies!"}</div>
             <div className="rabbit-flip">
               <span className="rabbit-emoji" style={{display:'inline-block'}}>
                 {dashCharacter==="grogu" ? (
                   <img src={_GROGU_IMG_SRC} width="56" height="56" style={{display:'block'}}/>
                 ) : (
-                  <span style={{fontSize:36,lineHeight:1,display:'block'}}>{dashCharacter==="monkey"?"🐵":"🐼"}</span>
+                  <span style={{fontSize:36,lineHeight:1,display:'block'}}>{dashCharacter==="monkey"?"🐒":"🐼"}</span>
                 )}
               </span>
               {dashCharacter!=="grogu" && (
@@ -3888,7 +3888,7 @@ function CenterDashboard({ vacant, occupied, assigned, unassigned, tele, medsurg
             </div>
             {[
               {id:'grogu',   label:'Grogu',             desc:'The Child — Baby Yoda',    icon:'🌌'},
-              {id:'monkey',  label:'Monkey + Banana',   desc:'Playful primate energy',   icon:'🐵🍌'},
+              {id:'monkey',  label:'Monkey + Banana',   desc:'Playful primate energy',   icon:'🐒🍌'},
               {id:'panda',   label:'Panda + Bamboo',    desc:'Chill panda vibes',        icon:'🐼🎋'},
             ].map(opt => (
               <div key={opt.id} onClick={()=>selectCharacter(opt.id)} style={{
@@ -4093,6 +4093,19 @@ function PolicySearchModal({ onClose }) {
   function startAdd()    {
     setEditing({ id:'', title:'', category:'Other', keywords:[], content:'', source:'manual', lastUpdated: policyToday(), _isNew: true });
     setView('edit');
+  }
+  function uploadPolicy(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result || '';
+      const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+      const freq = {}; words.forEach(w => freq[w] = (freq[w]||0)+1);
+      const keywords = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([w])=>w);
+      setEditing({ id:'', title, category:'Other', keywords, content: text.trim(), source: file.name, lastUpdated: policyToday(), _isNew: true });
+      setView('edit');
+    };
+    reader.readAsText(file);
   }
   function saveEdit() {
     const p = { ...editing, lastUpdated: policyToday() };
@@ -4357,6 +4370,11 @@ function PolicySearchModal({ onClose }) {
         <span style={{fontSize:12,color:'var(--text-4)'}}>{policies.length} policies</span>
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-ghost" style={{fontSize:11,color:'#fbbf24'}} onClick={resetToDefault}>↺ Reset</button>
+          <label className="btn btn-ghost" style={{fontSize:12,cursor:'pointer'}} title="Upload a .txt or .md policy file">
+            ⬆ Upload
+            <input type="file" accept=".txt,.md" style={{display:'none'}}
+              onChange={e=>{const f=e.target.files[0];if(f)uploadPolicy(f);e.target.value='';}}/>
+          </label>
           <button className="btn btn-primary" style={{fontSize:12}} onClick={startAdd}>+ Add</button>
         </div>
       </div>
