@@ -753,6 +753,8 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -4095,17 +4097,36 @@ function PolicySearchModal({ onClose }) {
     setView('edit');
   }
   function uploadPolicy(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target.result || '';
-      const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-      const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+    const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+    function finish(text) {
+      const words = (text||'').toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
       const freq = {}; words.forEach(w => freq[w] = (freq[w]||0)+1);
       const keywords = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([w])=>w);
-      setEditing({ id:'', title, category:'Other', keywords, content: text.trim(), source: file.name, lastUpdated: policyToday(), _isNew: true });
+      setEditing({ id:'', title, category:'Other', keywords, content: (text||'').trim(), source: file.name, lastUpdated: policyToday(), _isNew: true });
       setView('edit');
-    };
-    reader.readAsText(file);
+    }
+    if (/\.pdf$/i.test(file.name) && window.pdfjsLib) {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const pdf = await pdfjsLib.getDocument({data: new Uint8Array(e.target.result)}).promise;
+          let text = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(s=>s.str).join(' ') + '\n';
+          }
+          finish(text);
+        } catch(err) { finish(''); }
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (/\.(txt|md|csv|text|rtf|log)$/i.test(file.name)) {
+      const reader = new FileReader();
+      reader.onload = e => finish(e.target.result);
+      reader.readAsText(file);
+    } else {
+      finish(''); // other formats — open edit form with title pre-filled, user pastes content
+    }
   }
   function saveEdit() {
     const p = { ...editing, lastUpdated: policyToday() };
@@ -4370,9 +4391,9 @@ function PolicySearchModal({ onClose }) {
         <span style={{fontSize:12,color:'var(--text-4)'}}>{policies.length} policies</span>
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-ghost" style={{fontSize:11,color:'#fbbf24'}} onClick={resetToDefault}>↺ Reset</button>
-          <label className="btn btn-ghost" style={{fontSize:12,cursor:'pointer'}} title="Upload a .txt or .md policy file">
+          <label className="btn btn-ghost" style={{fontSize:12,cursor:'pointer'}} title="Upload any file — PDF and TXT content extracted automatically">
             ⬆ Upload
-            <input type="file" accept=".txt,.md" style={{display:'none'}}
+            <input type="file" style={{display:'none'}}
               onChange={e=>{const f=e.target.files[0];if(f)uploadPolicy(f);e.target.value='';}}/>
           </label>
           <button className="btn btn-primary" style={{fontSize:12}} onClick={startAdd}>+ Add</button>
