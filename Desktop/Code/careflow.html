@@ -4078,6 +4078,74 @@ const POLICY_CATEGORIES = [
   'Vascular & Central Line','Waste Management','Other',
 ];
 
+function SwipeRow({ onOpen, onDelete, children }) {
+  const cardRef = React.useRef(null);
+  const startX  = React.useRef(0);
+  const dx       = React.useRef(0);
+  const [hovered, setHovered] = React.useState(false);
+  const THRESHOLD = 80;
+  function onTouchStart(e) {
+    startX.current = e.touches[0].clientX;
+    dx.current = 0;
+    if (cardRef.current) cardRef.current.style.transition = 'none';
+  }
+  function onTouchMove(e) {
+    const d = e.touches[0].clientX - startX.current;
+    if (d >= 0) return;
+    dx.current = d;
+    if (cardRef.current) cardRef.current.style.transform = `translateX(${d}px)`;
+  }
+  function onTouchEnd() {
+    if (dx.current < -THRESHOLD) {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.18s ease';
+        cardRef.current.style.transform = 'translateX(-110%)';
+      }
+      setTimeout(onDelete, 180);
+    } else {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 0.22s ease';
+        cardRef.current.style.transform = 'translateX(0)';
+      }
+    }
+    dx.current = 0;
+  }
+  return (
+    <div style={{position:'relative',overflow:'hidden',borderRadius:9}}>
+      <div style={{position:'absolute',inset:0,background:'rgba(239,68,68,0.82)',display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:20,borderRadius:9,pointerEvents:'none'}}>
+        <span style={{fontSize:17,color:'#fff'}}>🗑</span>
+      </div>
+      <div ref={cardRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onMouseEnter={()=>setHovered(true)}
+        onMouseLeave={()=>setHovered(false)}
+        style={{position:'relative',display:'flex',alignItems:'stretch'}}
+      >
+        <button onClick={onOpen}
+          style={{flex:1,textAlign:'left',padding:'9px 12px',borderRadius:9,cursor:'pointer',
+            background:hovered?'rgba(255,255,255,0.09)':'rgba(255,255,255,0.04)',
+            border:`1px solid ${hovered?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.09)'}`,
+            color:'inherit',transition:'background 0.12s,border-color 0.12s',display:'block',width:'100%'}}
+        >
+          {children}
+        </button>
+        {hovered && (
+          <button onClick={e=>{e.stopPropagation();onDelete();}}
+            style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',
+              background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',
+              borderRadius:6,color:'#f87171',fontSize:13,cursor:'pointer',padding:'3px 8px',lineHeight:1,
+              transition:'background 0.12s'}}
+            onMouseEnter={e=>e.currentTarget.style.background='rgba(239,68,68,0.3)'}
+            onMouseLeave={e=>e.currentTarget.style.background='rgba(239,68,68,0.15)'}
+          >🗑</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PolicySearchModal({ onClose }) {
   const [policies, setPolicies]   = useState(() => loadPolicies());
   const [query, setQuery]         = useState('');
@@ -4505,12 +4573,13 @@ function PolicySearchModal({ onClose }) {
         <div style={{overflowY:'auto',flex:1,display:'flex',flexDirection:'column',gap:5}}>
           <div style={{fontSize:10,color:'var(--text-4)',marginBottom:2}}>{results.length} result{results.length!==1?'s':''} for "{query}"</div>
           {results.map((p,i)=>(
-            <button key={i} onClick={()=>openPolicy(p)}
-              style={{textAlign:'left',padding:'9px 12px',borderRadius:9,cursor:'pointer',
-                background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.09)',
-                color:'inherit',transition:'all 0.12s',display:'block',width:'100%'}}
-              onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,0.09)';e.currentTarget.style.borderColor='rgba(255,255,255,0.22)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,0.04)';e.currentTarget.style.borderColor='rgba(255,255,255,0.09)';}}
+            <SwipeRow key={i}
+              onOpen={()=>openPolicy(p)}
+              onDelete={()=>{
+                const next = policies.filter(x=>!(x.id===p.id&&x.title===p.title));
+                persistPolicies(next);
+                setResults(searchPolicies(query, next));
+              }}
             >
               <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3}}>
                 <span style={{fontSize:12,fontWeight:700,color:'var(--text-1)',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.title}</span>
@@ -4521,7 +4590,7 @@ function PolicySearchModal({ onClose }) {
                   {p.content.slice(0,120)}
                 </div>
               )}
-            </button>
+            </SwipeRow>
           ))}
         </div>
       )}
