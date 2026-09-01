@@ -5566,7 +5566,7 @@ function App() {
               <span>Nursing Staff</span>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ background:'var(--btn-ghost-bg)', color:'var(--btn-ghost-tx)', borderRadius:10, padding:'1px 8px', fontSize:11, fontWeight:700, letterSpacing:0 }}>{nurses.length}</span>
-                {nurses.length > 0 && (
+                {nurses.length > 0 && (<>
                   <button
                     onClick={()=>{
                       if(!confirm('Remove all room assignments from every nurse?')) return;
@@ -5603,7 +5603,7 @@ function App() {
                     onMouseEnter={e=>{ e.currentTarget.style.background='rgba(239,68,68,0.30)'; e.currentTarget.style.borderColor='rgba(239,68,68,0.7)'; e.currentTarget.style.boxShadow='0 0 0 2px rgba(239,68,68,0.20)'; }}
                     onMouseLeave={e=>{ e.currentTarget.style.background='rgba(239,68,68,0.15)'; e.currentTarget.style.borderColor='rgba(239,68,68,0.45)'; e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.25)'; }}
                   >🗑 Clear All</button>
-                )}
+                </>)}
               </div>
             </div>
             <div style={{ display:'flex', gap:6 }}>
