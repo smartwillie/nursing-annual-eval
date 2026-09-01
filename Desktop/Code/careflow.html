@@ -217,7 +217,7 @@
     opacity: 0.70;
   }
   .trash-zone:hover { opacity: 1; background: rgba(255,69,58,0.18); border-color: #FF453A; }
-  .trash-zone.drag-over { background: rgba(255,69,58,0.30); border-color: #FF453A; opacity: 1; }
+  .trash-zone.drag-over { background: rgba(255,69,58,0.55); border-color: #FF453A; opacity: 1; transform: scale(1.45); box-shadow: 0 0 12px rgba(255,69,58,0.55); font-size: 17px; }
 
   /* ── Modal — macOS sheet style ── */
   .modal-overlay {
@@ -5567,6 +5567,23 @@ function App() {
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ background:'var(--btn-ghost-bg)', color:'var(--btn-ghost-tx)', borderRadius:10, padding:'1px 8px', fontSize:11, fontWeight:700, letterSpacing:0 }}>{nurses.length}</span>
                 {nurses.length > 0 && (
+                  <button
+                    onClick={()=>{
+                      if(!confirm('Remove all room assignments from every nurse?')) return;
+                      setRooms(prev=>{ const n={}; Object.keys(prev).forEach(id=>{ n[id]={...prev[id],nurseId:null}; }); return n; });
+                    }}
+                    title="Remove all rooms from every nurse (keeps nurses)"
+                    style={{
+                      background:'rgba(245,158,11,0.13)', border:'1px solid rgba(245,158,11,0.40)',
+                      color:'#fcd34d', borderRadius:7, padding:'3px 10px', fontSize:11, fontWeight:700,
+                      cursor:'pointer', display:'flex', alignItems:'center', gap:4,
+                      transition:'background 0.15s, border-color 0.15s, box-shadow 0.15s',
+                      boxShadow:'0 1px 3px rgba(0,0,0,0.25)',
+                      letterSpacing:'0.02em',
+                    }}
+                    onMouseEnter={e=>{ e.currentTarget.style.background='rgba(245,158,11,0.28)'; e.currentTarget.style.borderColor='rgba(245,158,11,0.65)'; e.currentTarget.style.boxShadow='0 0 0 2px rgba(245,158,11,0.18)'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.background='rgba(245,158,11,0.13)'; e.currentTarget.style.borderColor='rgba(245,158,11,0.40)'; e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.25)'; }}
+                  >🏠 Clear Rooms</button>
                   <button
                     onClick={()=>{
                       if(!confirm('Delete all nurses and unassign all rooms?')) return;
